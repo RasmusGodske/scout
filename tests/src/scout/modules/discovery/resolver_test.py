@@ -37,17 +37,26 @@ FILLER = "<a href=/n1>a</a><a href=/n2>b</a><a href=/n3>c</a><a href=/n4>d</a><a
 def jev_judging(
     link_answer: dict[str, float] | None = None, choose: str | None = None, seen: list | None = None
 ):
-    """A fake Jev: nouls by URL substring (default 0.05), choice by URL substring."""
+    """A fake Jev. Job-link nouls by URL substring (default 0.05); job-page nouls yes unless the
+    page says the job is gone or is a profile; the careers choice by URL substring, else the
+    first option (keyword matches come first)."""
 
     def answer(q: dict[str, Any]) -> dict[str, Any]:
         if q["type"] == "noul":
-            url = q["instructions"]["link"]["url"]
+            instructions = q["instructions"]
+            if "page" in instructions:
+                page = instructions["page"]
+                gone = any(w in (page["title"] + page["text"]).lower() for w in ("not found", "profile"))
+                return {"type": "noul", "noul": 0.03 if gone else 0.95}
+            url = instructions["link"]["url"]
             p = next((v for k, v in (link_answer or {}).items() if k in url), 0.05)
             return {"type": "noul", "noul": p}
         options = q["criteria"]
-        pick = next(
-            (k for k, v in options.items() if isinstance(v, dict) and choose and choose in v["url"]), "none"
-        )
+        links = [k for k, v in options.items() if isinstance(v, dict)]
+        if choose is None:
+            pick = links[0] if links else "none"
+        else:
+            pick = next((k for k in links if choose in options[k]["url"]), "none")
         probs = {k: (0.9 if k == pick else 0.1 / max(1, len(options) - 1)) for k in options}
         return {"type": "choice", "choice": pick, "probabilities": probs, "confidence": 0.8}
 
@@ -118,7 +127,8 @@ def test_custom_page_jobs_are_judged_by_jev_and_fetched(tmp_path: Path) -> None:
     assert job.content is not None and job.content.format == "html" and "Du skal sælge" in job.content.text
     assert job.details.title == "Salgschef" and job.details_sources == {"title": DetailSource.PAGE_HEADING}
     assert job.details.posted_at is None  # the page states none
-    assert len(seen) == 1  # every link judged in one batched request
+    link_requests = [b for b in seen if any("link" in _instr(q) for q in b["questions"].values())]
+    assert len(link_requests) == 1  # every link judged in one batched request
     assert dict(r.link_verdicts)["https://acme.dk/karriere/salgschef"] == 0.95
 
 
@@ -202,7 +212,9 @@ def test_known_jobs_on_a_page_are_confirmed_not_refetched(tmp_path: Path) -> Non
     new = next(j for j in again.jobs if j.id.endswith("/ny"))
     assert old.known and old.content is None and old.details_sources == {"title": DetailSource.LINK_TEXT}
     assert not new.known and new.content is not None
-    asked = [q["instructions"]["link"]["url"] for body in seen for q in body["questions"].values()]
+    asked = [
+        _instr(q)["link"]["url"] for body in seen for q in body["questions"].values() if "link" in _instr(q)
+    ]
     assert asked == ["https://acme.dk/karriere/ny"]  # only the new link went to Jev
 
 
@@ -323,3 +335,107 @@ def test_lookup_job_that_cannot_be_checked(tmp_path: Path) -> None:
     route = ScrapeResult("acme.dk", Status.PAGE, "https://acme.dk/karriere")
     lookup = res.lookup_job(route, "https://acme.dk/karriere/kok")
     assert lookup.listing_status is ListingStatus.CHECK_FAILED and lookup.problem is Problem.UNREACHABLE
+
+
+# --- precision ------------------------------------------------------------------------------
+
+
+def test_a_lone_keyword_link_is_still_checked_by_jev(tmp_path: Path) -> None:
+    # "Job" is a person's name here; the real careers page is linked as "Werken bij".
+    web = FakeWeb()
+    web.html(
+        "https://acme.nl/",
+        f"<a href='/team/job-van-den-berk'>Job van den Berk</a><a href='/werken-bij'>Werken bij</a>{FILLER}",
+    )
+    web.html("https://acme.nl/werken-bij", f"<a href='/werken-bij/kok'>Kok</a>{FILLER}")
+    web.html("https://acme.nl/werken-bij/kok", f"<h1>Kok</h1><p>{'Koken. ' * 100}</p>")
+    r = resolver(web, jev_judging({"/werken-bij/": 0.95}, choose="werken-bij"), tmp_path).resolve("acme.nl")
+    assert r.careers_url == "https://acme.nl/werken-bij" and [j.details.title for j in r.jobs] == ["Kok"]
+
+
+def test_job_pages_that_are_not_open_ads_are_dropped(tmp_path: Path) -> None:
+    web = FakeWeb()
+    careers_site(web, {"salgschef": "Salgschef", "gammel": "Job not found"})
+    seen: list[dict] = []
+    r = resolver(web, jev_judging({"/karriere/": 0.95}, seen=seen), tmp_path).resolve("acme.dk")
+    assert [j.details.title for j in r.jobs] == ["Salgschef"]
+    page_questions = [q for body in seen for q in body["questions"].values() if "page" in _instr(q)]
+    assert len(page_questions) == 2  # both fetched pages checked, in one request
+
+
+def test_without_jev_a_job_gone_title_is_still_dropped(tmp_path: Path) -> None:
+    web = FakeWeb()
+    careers_site(web, {"salgschef": "Salgschef", "gammel": "Job not found"})
+    r = resolver(web, tmp=tmp_path).resolve("acme.dk")
+    assert [j.details.title for j in r.jobs] == ["Salgschef"]
+
+
+def test_lookup_of_a_page_that_now_says_job_not_found_is_not_listed(tmp_path: Path) -> None:
+    web = FakeWeb()
+    careers_site(web, {"salgschef": "Salgschef"})
+    res = resolver(web, jev_judging({"/karriere/": 0.95}), tmp_path)
+    route = res.resolve("acme.dk")
+    web.html("https://acme.dk/karriere/salgschef", "<h1>Job not found</h1><p>This position has closed.</p>")
+    assert res.lookup_job(route, route.jobs[0].id).listing_status is ListingStatus.NOT_LISTED
+
+
+def _instr(question: dict[str, Any]) -> dict[str, Any]:
+    """A yes/no question's structured instructions; {} for anything else."""
+    instructions = question["instructions"]
+    return instructions if question["type"] == "noul" and isinstance(instructions, dict) else {}
+
+
+def test_two_links_to_the_same_job_page_are_one_job(tmp_path: Path) -> None:
+    web = FakeWeb()
+    web.html("https://acme.dk/", f"<a href='/karriere'>Karriere</a>{FILLER}")
+    web.html(
+        "https://acme.dk/karriere",
+        f"<a href='/karriere/kok'>Kok</a><a href='/karriere/kok-gammel'>Kok (gammelt link)</a>{FILLER}",
+    )
+    web.html("https://acme.dk/karriere/kok", f"<h1>Kok</h1><p>{'Mad. ' * 100}</p>")
+    web.redirect("https://acme.dk/karriere/kok-gammel", "https://acme.dk/karriere/kok")
+    r = resolver(web, jev_judging({"/karriere/": 0.95}), tmp_path).resolve("acme.dk")
+    assert [j.url for j in r.jobs] == ["https://acme.dk/karriere/kok"]
+
+
+def test_an_unlinked_guessed_board_loses_to_the_companys_own_careers_page(tmp_path: Path) -> None:
+    # Like gefeba.de: a few ads on a board the site never links, the real list on its own page.
+    web = FakeWeb()
+    teamtailor_feed(web)  # names "Acme", so the guess passes the name check
+    careers_site(web, {"kok": "Kok", "smed": "Smed", "elektriker": "Elektriker"})
+    r = resolver(web, jev_judging({"/karriere/": 0.95}), tmp_path).resolve("acme.dk")
+    assert r.status is Status.PAGE and len(r.jobs) == 3
+
+
+def test_an_unlinked_guessed_board_is_used_when_the_site_shows_no_jobs(tmp_path: Path) -> None:
+    web = FakeWeb()
+    teamtailor_feed(web)
+    careers_site(web, {})
+    r = resolver(web, jev_judging({"/karriere/": 0.95}), tmp_path).resolve("acme.dk")
+    assert r.board == BoardRef("teamtailor", "acme") and r.found_by is FoundBy.SLUG_GUESS
+
+
+def test_a_path_that_serves_the_homepage_is_not_a_careers_page(tmp_path: Path) -> None:
+    # Like kaliber5.de: /karriere answers 200 with the homepage instead of a 404.
+    web = FakeWeb()
+    home = f"<html><head><title>Acme</title></head><body>{FILLER}</body></html>"
+    web.html("https://acme.dk/", home)
+    web.html("https://acme.dk/karriere", home)
+    r = resolver(web, tmp=tmp_path).resolve("acme.dk")
+    assert r.status is Status.NO_CAREERS_PAGE
+
+
+def test_the_job_list_is_followed_when_the_only_job_link_is_not_a_job(tmp_path: Path) -> None:
+    # Like inray.de: the landing page has one link that looks like a job but is not an open ad,
+    # and a link to the real list on a hiring system.
+    web = FakeWeb()
+    teamtailor_feed(web, slug="acme")
+    web.html("https://acme.dk/", f"<a href='/karriere'>Karriere</a>{FILLER}")
+    web.html(
+        "https://acme.dk/karriere",
+        f"<a href='/karriere/profile-anna'>Anna</a><a href='https://acme.teamtailor.com/jobs'>Jobs</a>{FILLER}",
+    )
+    web.html("https://acme.dk/karriere/profile-anna", "<h1>Anna, profile</h1><p>Our colleague Anna.</p>")
+    web.html("https://acme.teamtailor.com/jobs", "<p>jobs</p>" + "x" * 600)
+    r = resolver(web, jev_judging({"/karriere/": 0.95}, choose="karriere"), tmp_path).resolve("acme.dk")
+    assert r.board == BoardRef("teamtailor", "acme") and r.jobs

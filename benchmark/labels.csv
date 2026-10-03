@@ -1,17 +1,52 @@
-# Hand-checked benchmark labels. One row per domain.
-# system: a board system (greenhouse, lever, ashby, workable, recruitee, teamtailor, hrmanager,
-#   emply, join, hibob), empty for a custom careers page, or no_careers_page.
-# open_jobs: how many jobs were open on the day of labelling; blank if not counted.
-# labelled_by: who drafted the row. checked_by: filled in by Rasmus once verified; only checked
-#   rows count towards the real hit rate (`scout bench --checked-only`).
-# These seed rows were drafted by Claude on 2026-10-03 from direct requests to each site and
-# vendor feed, not from scout's own output. The ~100 Apollo domains replace and extend them.
-domain,careers_url,system,slug,open_jobs,labelled_by,checked_by,notes
-lunar.app,https://jobs.lunar.app/jobs,teamtailor,lunar,,claude,,"Teamtailor on custom host jobs.lunar.app; an unrelated US 'Lunar' has an Ashby board under slug lunar"
-molslinjen.dk,https://molslinjen.career.emply.com/da/ledige-stillinger,emply,molslinjen,,claude,,"Homepage links Emply; a stale Teamtailor board also exists under molslinjen"
-regionsyddanmark.dk,,hrmanager,regionsyddanmark,267,claude,,"HR Manager positionlist reported PositionCountCustomer=267"
-poweredbysous.com,https://poweredbysous.com/careers,join,poweredbysous,7,claude,,"Own job pages plus JOIN; JOIN company page total=7"
-dixa.com,https://dixa.careers.hibob.com/jobs,hibob,dixa,2,claude,,"HiBob job-ad API returned 2 ads"
-siteimprove.com,https://careers.siteimprove.com/open-positions/,,,,claude,,"Custom page; job list rendered by script"
-planday.com,https://www.planday.com/careers,,,,claude,,"Jobs listed on careers.xero.com (Xero owns Planday), which answers 403 to our bot user agent"
-airbnb.com,,greenhouse,airbnb,,claude,,"Greenhouse board feed"
+# Hand-checked benchmark labels: 40 European companies, NOT from any lead list and NOT used
+# while developing scout, so the score is honest.
+# system: a hiring system (greenhouse, lever, ashby, workable, recruitee, teamtailor, hrmanager,
+#   emply, join, hibob are supported; others such as personio, homerun, welcometothejungle,
+#   bamboohr are read as a careers page), empty for a custom page, or no_careers_page.
+# open_jobs: open job ads on the day of labelling. job_urls: every open job's URL (custom
+#   pages), for per-job precision and recall.
+# labelled_by: who drafted the row. checked_by: filled in once a person has verified it; only
+#   checked rows count towards the real score (`scout bench --checked-only`).
+# Drafted 2026-10-03 by five research agents that fetched each site directly (not via scout).
+# Jobs open and close: relabel open_jobs and job_urls before trusting an old file.
+domain,careers_url,system,slug,open_jobs,job_urls,labelled_by,checked_by,notes
+plecto.com,https://candidate.hr-manager.net/vacancies/list.aspx?customer=plecto-aps_tr&nocookies=true,hrmanager,plecto-aps_tr,1,,claude-agents,,careers page plecto.com/company/careers/ links to the HR Manager list (also embedded as iframe); 1 job; unsolicited application entry not counted
+variant.no,https://jobs.variant.no/,recruitee,jobs.variant.no,13,,claude-agents,,Recruitee on custom domain; 13 offers (Norway and Sweden); variant.no/no/jobb shows only the 8 Norwegian ones
+druid.fi,https://careers.druid.fi/jobs,teamtailor,careers.druid.fi,1,,claude-agents,,Teamtailor on custom domain; only entry is an open application with its own ad page
+dwarf.dk,https://dwarf.dk/career,,,1,https://dwarf.dk/career/devops-lead,claude-agents,,Danish agency; English page; applications via Elvium
+nitor.com,https://nitor.com/en/careers,,,10,https://nitor.com/en/careers/strategy-and-transformation-coach https://nitor.com/en/careers/product-coach-for-the-ai-era https://nitor.com/en/careers/productdesigner https://nitor.com/en/careers/cloud-architect https://nitor.com/en/careers/full-stack-data-scientist https://nitor.com/en/careers/senior-ai-engineer https://nitor.com/en/careers/ai-architect https://nitor.com/en/careers/senior-fullstack-developer-en https://nitor.com/en/careers/software-architect https://nitor.com/en/careers/senior-data-engineer,claude-agents,,Finnish consultancy; Finnish mirror /fi/tyopaikat lists the same 10 jobs under other slugs
+elvenite.se,https://elvenite.se/karriar/,,,7,https://elvenite.se/ledig-tjanst/senior-relex-konsult-till-elvenite-2/ https://elvenite.se/ledig-tjanst/solution-data-architect-till-elvenite/ https://elvenite.se/ledig-tjanst/data-intelligence-bi-konsult-till-elvenite/ https://elvenite.se/ledig-tjanst/senior-infor-m3-supply-chain-consultant-2/ https://elvenite.se/ledig-tjanst/senior-infor-m3-konsult-inom-finans/ https://elvenite.se/ledig-tjanst/senior-infor-m3-konsult-inom-produktion/ https://elvenite.se/ledig-tjanst/senior-infor-m3-konsult-inom-supply-chain/,claude-agents,,Swedish; list paginated: 5 on /karriar/ and 2 on /karriar/page/2/
+kraftvaerk.dk,https://www.kraftvaerk.dk/karriere/,bamboohr,kraftvaerk,0,,claude-agents,,careers page exists but no vacancies; only an unsolicited application link to BambooHR
+nabto.com,,no_careers_page,,,,claude-agents,,small Danish IoT company; no careers link; /careers /jobs /karriere 404
+kernpunkt.de,https://www.kernpunkt.de/jobs,,,0,,claude-agents,,Cologne digital agency; page says no open positions; open applications by email only
+wigeogis.com,https://www.wigeogis.com/de/jobs,,,1,https://www.wigeogis.com/de/praktikum_gis_geoinformatik_muenchen,claude-agents,,Vienna/Munich GIS firm; one internship ad; Initiativbewerbung has no ad page
+renuo.ch,https://www.renuo.ch/jobs,,,2,https://www.renuo.ch/jobs/software-engineer https://www.renuo.ch/jobs/internship,claude-agents,,Swiss software agency; EN mirror at /en/jobs not counted separately
+gefeba.de,https://www.gefeba.de/karriere/,,,12,https://www.gefeba.de/stellenangebote/technischer-geschaeftsfuehrer-mwd/ https://www.gefeba.de/stellenangebote/techniker-ingenieur-elektrotechnik-angebotsprojektierung-mwd/ https://www.gefeba.de/stellenangebote/sps-programmierer-m-w-d/ https://www.gefeba.de/stellenangebote/schlosser-m-w-d-in-duisburg-ruhrort/ https://www.gefeba.de/stellenangebote/obermonteur-industriemontage-m-w-d/ https://www.gefeba.de/stellenangebote/elektrokonstrukteur-hardwareplaner-eplan-m-w-d/ https://www.gefeba.de/stellenangebote/elektriker-industriemontage-m-w-d-in-duisburg-hamborn/ https://www.gefeba.de/stellenangebote/elektriker-elektroniker-industriemontage-m-w-d-deutschlandweit/ https://www.gefeba.de/stellenangebote/bauleiter-industriemontage-m-w-d-deutschlandweit/ https://www.gefeba.de/stellenangebote/antriebstechniker-fuer-automatisierungsprojekte-m-w-d/ https://www.gefeba.de/stellenangebote/ausbildung-elektroniker-betriebstechnik/ https://www.gefeba.de/stellenangebote/ausbildung-konstruktionsmechaniker-feinblechbautechnik/,claude-agents,,Mittelstand automation firm; 10 ads on /karriere/ plus 2 apprenticeships on /karriere/ausbildung/
+liip.ch,https://jobs.liip.ch/jobs,teamtailor,jobs.liip.ch,1,,claude-agents,,liip.ch/de/jobs redirects to Teamtailor on custom domain jobs.liip.ch; 1 job
+inray.de,https://karriere.inray.de/jobs,teamtailor,karriere.inray.de,15,,claude-agents,,Teamtailor on custom domain linked from inray.de/karriere/; 15 jobs incl. Initiativbewerbung and Ausbildung
+mayflower.de,https://mayflower.jobs.personio.de/,personio,mayflower,8,,claude-agents,,mayflower.de/karriere/ embeds the Personio board in an iframe; 8 ads (4 titles x 2 offices)
+kaliber5.de,,no_careers_page,,,,claude-agents,,small Hamburg agency; no careers link; /karriere and /jobs 404
+learnupon.com,https://job-boards.greenhouse.io/learnupon,greenhouse,learnupon,14,,claude-agents,,Dublin LMS SaaS; careers.learnupon.com lists Greenhouse links incl. one stale closed link; 14 open on board and API
+causaly.com,https://jobs.ashbyhq.com/causaly,ashby,causaly,4,,claude-agents,,London biomedical AI SaaS; homepage links straight to the Ashby board; no careers page on own site
+torchbox.com,https://torchbox.jobs.personio.com/,personio,torchbox,0,,claude-agents,,Oxford digital agency; careers page links to an empty Personio board
+dxw.com,https://www.dxw.com/careers/,,,5,https://www.dxw.com/jobs/lead-product-manager/ https://www.dxw.com/jobs/service-designer-5/ https://www.dxw.com/jobs/interaction-designer-2/ https://www.dxw.com/jobs/business-analyst-4/ https://www.dxw.com/jobs/general-application/,claude-agents,,UK public-sector agency; 4 roles plus a general application with its own page; /jobs/ archive still shows 2 expired roles
+boxuk.com,https://www.boxuk.com/about-us/careers/,,,1,https://www.boxuk.com/about-us/careers/junior-systems-engineer/,claude-agents,,Cardiff software consultancy; one current vacancy
+rawnet.com,https://www.rawnet.com/careers,,,1,https://www.rawnet.com/careers/senior-business-development-manager,claude-agents,,Bracknell agency; job page title tag is wrong (says Project Manager)
+kyan.com,https://kyan.com/careers,,,0,,claude-agents,,Guildford agency; careers page says not currently hiring
+hactar.is,,no_careers_page,,,,claude-agents,,small UK agency; one-page holding site; no careers page
+shiftbase.com,https://jobs.shiftbase.com/,recruitee,shiftbase,4,,claude-agents,,NL workforce SaaS; Recruitee board on custom host jobs.shiftbase.com
+hublo.com,https://careers.hublo.com/jobs,teamtailor,hublo,24,,claude-agents,,FR healthcare staffing SaaS; Teamtailor on careers.hublo.com; 20 jobs on first page plus 4 behind show more
+hike.one,https://hikeone.homerun.co/,homerun,hikeone,0,,claude-agents,,NL design agency; hike.one/careers links to an empty Homerun board
+dougs.fr,https://www.welcometothejungle.com/fr/companies/dougs/jobs,welcometothejungle,dougs,18,,claude-agents,,FR accounting firm; dougs.fr/jobs/ links to WTTJ; WTTJ also shows a generic spontaneous application card not counted
+kabisa.nl,https://kabisa.nl/jobs/,,,4,https://kabisa.nl/jobs/engineeringlead/ https://kabisa.nl/jobs/full-stack-developer/ https://kabisa.nl/jobs/devopsengineer/ https://kabisa.nl/jobs/software-architect/,claude-agents,,NL software agency; Dutch pages
+calibrate.be,https://www.calibrate.be/nl/jobs,,,6,https://www.calibrate.be/nl/jobs/medior-drupal-backend-developer https://www.calibrate.be/nl/jobs/senior-drupal-backend-developer https://www.calibrate.be/nl/jobs/digital-project-manager https://www.calibrate.be/nl/frontend-drupal-developer https://www.calibrate.be/nl/jobs/fullstack-drupal-developer https://www.calibrate.be/nl/jobs/drupal-consultant,claude-agents,,BE Drupal agency; one job outside /nl/jobs/
+adimeo.com,https://www.adimeo.com/carrieres-digitales,,,1,https://www.adimeo.com/offre-demploi-consultant-solutions-applicatives,claude-agents,,FR digital agency; link is a HubSpot CTA redirect needing JS; 3 stale job pages in sitemap not counted
+occitech.fr,,no_careers_page,,,,claude-agents,,FR Toulouse web agency; no careers link; old recruitment blog posts only
+apify.com,https://apify.com/jobs,ashby,apify,11,,claude-agents,,Czech scale-up; jobs page links to jobs.ashbyhq.com/apify; Ashby API returns the same 11
+lin3s.com,https://lin3s.com/unete,teamtailor,lin3s,1,,claude-agents,,Spanish B2B agency; Teamtailor widget on /unete and lin3s.teamtailor.com both show 1 job
+kaleidos.net,https://www.kaleidos.net/careers,personio,kaleidos,3,,claude-agents,,Madrid (Penpot); jobs on kaleidos.jobs.personio.com; 2 roles plus a proactive application with its own ad page
+boldare.com,https://www.boldare.com/career/offers/,,,7,https://www.boldare.com/career/agile-project-lead-delivery-management/ https://www.boldare.com/career/Delivery%20Lead/ https://www.boldare.com/career/devops-engineer-kubernetes-terraform--UIc_/ https://www.boldare.com/career/fullstack-typescript-developer-react-node-js-8pkDO/ https://www.boldare.com/career/java-developer-new/ https://www.boldare.com/career/php-developer/ https://www.boldare.com/career/product-engineer/,claude-agents,,Polish software house; one href has a literal space
+ackee.cz,https://www.ackee.cz/kariera,,,2,https://www.ackee.cz/kariera/app-tester-team-leader https://www.ackee.cz/kariera/designer,claude-agents,,Czech agency; 6 more role pages are marked not hiring right now and excluded
+intre.it,https://www.intre.it/career/,,,3,https://www.intre.it/career/business-developer-account-manager-cybersecurity/ https://www.intre.it/career/full-stack-developer-202606/ https://www.intre.it/career/offensive-security-specialist-202609/,claude-agents,,Italian software house; Italian pages
+mooncascade.com,https://www.mooncascade.com/career,,,0,,claude-agents,,Estonian consultancy; careers page with no job list
+lemoncode.net,,no_careers_page,,,,claude-agents,,small Malaga training firm; no careers page

@@ -357,3 +357,22 @@ def test_recruitee_salary_and_greenhouse_department_come_from_the_feed() -> None
     gh = boards.fetch(BoardRef("greenhouse", "airbnb")).jobs[0]  # type: ignore[union-attr]
     assert gh.details.department and gh.details.posted_at.endswith("Z")  # type: ignore[union-attr]
     assert "salary" not in gh.details_sources  # Greenhouse states none: absent, not guessed
+
+
+def test_hrmanager_list_link_and_recruitee_on_a_custom_host_are_detected() -> None:
+    hrm = '<iframe src="https://candidate.hr-manager.net/vacancies/list.aspx?customer=plecto-aps_tr&amp;nocookies=true">'
+    assert detect_boards(hrm, "https://plecto.com/company/careers/")[0] == BoardRef(
+        "hrmanager", "plecto-aps_tr"
+    )
+    recruitee = "".join(
+        '<link href="https://d10zminp1cyta8.cloudfront.net/x" /><img src="https://recruiteecdn.com/i.png">'
+        for _ in range(3)
+    )
+    assert detect_boards(recruitee, "https://jobs.acme.no/")[0] == BoardRef("recruitee", "jobs.acme.no")
+
+
+def test_recruitee_on_a_custom_host_reads_its_feed() -> None:
+    web = FakeWeb()
+    web.text("https://jobs.acme.no/api/offers", read("recruitee_offers.json"))
+    listing = boards_on(web).fetch(BoardRef("recruitee", "jobs.acme.no"))
+    assert listing is not None and len(listing.jobs) == 2

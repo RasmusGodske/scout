@@ -126,3 +126,13 @@ def test_precision_and_recall_per_job() -> None:
 
     report = Report([v, w])
     assert report.job_precision() == 2 / 4 and report.job_recall() == 2 / 3
+
+
+def test_an_unsupported_board_embedded_in_the_company_page_counts() -> None:
+    result = ScrapeResult(
+        "m.de",
+        Status.PAGE,
+        careers_url="https://m.de/karriere",
+        jobs=page_jobs("https://m.jobs.personio.de/job/1"),
+    )
+    assert judge(label(system="personio", careers_url="https://m.jobs.personio.de/"), result).hit

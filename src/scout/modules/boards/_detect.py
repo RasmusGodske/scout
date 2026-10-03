@@ -72,12 +72,19 @@ _PATTERNS: list[tuple[str, str, re.Pattern[str]]] = [
     ("recruitee", "", re.compile(r"(?://|\b)" + _SUB + r"\.recruitee\.com", re.I)),
     ("teamtailor", "", re.compile(r"(?://|\b)" + _SUB + r"\.teamtailor\.com", re.I)),
     ("hrmanager", "", re.compile(r"hr-manager\.net/jobportal\.svc/([A-Za-z0-9_-]+)", re.I)),
+    # The candidate site links lists by customer alias: .../list.aspx?customer=<alias>
+    (
+        "hrmanager",
+        "",
+        re.compile(r"hr-?manager\.(?:net|com)/[^\"'\s<>]*?[?&](?:amp;)?customer=([A-Za-z0-9_-]+)", re.I),
+    ),
     ("emply", "", re.compile(r"(?://|\b)" + _SUB + r"\.career\.emply\.com", re.I)),
     ("join", "", re.compile(r"(?://|\b)join\.com/companies/" + _SUB, re.I)),
     ("hibob", "", re.compile(r"(?://|\b)" + _SUB + r"\.careers\.hibob\.com", re.I)),
 ]
 
 _TEAMTAILOR_SITE = re.compile(r"teamtailor-cdn\.com", re.I)
+_RECRUITEE_SITE = re.compile(r"recruiteecdn\.com", re.I)
 
 
 def detect_boards(html: str, page_url: str) -> list[BoardRef]:
@@ -93,6 +100,8 @@ def detect_boards(html: str, page_url: str) -> list[BoardRef]:
     host = urlsplit(page_url).netloc.lower()
     if "teamtailor.com" not in host and len(_TEAMTAILOR_SITE.findall(html)) >= 3:
         counts[BoardRef("teamtailor", host)] += 500
+    if "recruitee.com" not in host and len(_RECRUITEE_SITE.findall(html)) >= 3:
+        counts[BoardRef("recruitee", host)] += 500
     emply = find_emply_section(html)
     if emply and host:
         counts[BoardRef("emply", host, emply[0])] += 500

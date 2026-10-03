@@ -39,10 +39,23 @@ max_choice_options = 255       # TypeSafe's documented maximum per Choice
 [discovery]
 # Careers words in English and Danish at least. Matched against link text and URL.
 careers_words = [
-  "career", "careers", "jobs", "job", "join us", "join-us", "work with us", "work-with-us",
-  "vacancies", "open positions", "openings", "we're hiring", "hiring",
+  # English
+  "career", "careers", "jobs", "job", "join us", "join-us", "join our team", "work with us",
+  "work-with-us", "work for us", "vacancies", "open positions", "openings", "we're hiring", "hiring",
+  # Danish, Norwegian, Swedish, Finnish
   "karriere", "ledige stillinger", "ledige-stillinger", "stillinger", "arbejd hos os",
-  "arbejd-hos-os", "job hos", "bliv en del af",
+  "arbejd-hos-os", "job hos", "bliv en del af", "jobb", "jobba hos oss", "karriär", "lediga tjänster",
+  "lediga jobb", "jobbe hos oss", "rekry", "työpaikat", "avoimet työpaikat", "ura",
+  # German
+  "stellenangebote", "stellen", "offene stellen", "jobs & karriere", "karriere bei", "arbeiten bei",
+  # Dutch
+  "vacatures", "vacature", "werken bij", "werkenbij", "kom werken",
+  # French
+  "carrières", "carrieres", "carrière", "recrutement", "nous rejoindre", "rejoignez-nous",
+  "rejoindre", "offres d'emploi", "emplois", "emploi",
+  # Spanish, Italian, Portuguese, Polish
+  "empleo", "trabaja con nosotros", "únete", "lavora con noi", "carriere", "posizioni aperte",
+  "carreiras", "trabalhe conosco", "kariera", "praca", "oferty pracy",
 ]
 common_paths = [
   "/careers", "/jobs", "/karriere", "/job", "/join-us", "/ledige-stillinger",
@@ -51,6 +64,8 @@ common_paths = [
 ]
 # Probability above which Jev's "is this a link to a single job ad" counts as yes.
 job_link_threshold = 0.6
+# Probability above which Jev's "is this fetched page an open job ad" keeps it as a job.
+job_page_threshold = 0.5
 # Below this, Jev's careers-page choice is treated as "none".
 careers_choice_min_probability = 0.35
 max_job_links_per_page = 500

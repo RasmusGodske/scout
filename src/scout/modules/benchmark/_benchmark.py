@@ -125,13 +125,21 @@ def judge(label: Label, result: ScrapeResult, supported: frozenset[str] = frozen
         got = result.board.system if result.board else ""
         if got != label.system:
             misses.append(f"system: expected {label.system}, got {got or result.status.value}")
-        elif label.slug and result.board and result.board.slug.lower() != label.slug:
+        elif label.slug and result.board and not _same_board(label, result.board.slug):
             misses.append(f"slug: expected {label.slug}, got {result.board.slug}")
     else:
         if result.status is not Status.PAGE:
             misses.append(f"status: expected a careers page, got {result.status.value}")
         elif label.careers_url and not _same_page(label.careers_url, result.careers_url):
-            misses.append(f"careers_url: expected {label.careers_url}, got {result.careers_url}")
+            # A board on a hiring system scout has no adapter for is often embedded in the
+            # company's own careers page; landing there, or reading jobs off the board's host,
+            # is the right place too.
+            board_host = urlsplit(label.careers_url).netloc.lower()
+            on_board = label.system and any(urlsplit(j.url).netloc.lower() == board_host for j in result.jobs)
+            # An empty board behind the company's own page: no jobs reported is the right answer.
+            empty_board = label.system and label.open_jobs == 0 and not result.jobs
+            if not (on_board or empty_board):
+                misses.append(f"careers_url: expected {label.careers_url}, got {result.careers_url}")
     if label.system != NO_CAREERS and label.open_jobs is not None and not misses:
         tolerance = max(2, round(label.open_jobs * 0.25))
         if abs(found - label.open_jobs) > tolerance:
@@ -158,6 +166,13 @@ def judge(label: Label, result: ScrapeResult, supported: frozenset[str] = frozen
         false_jobs,
         missed_jobs,
     )
+
+
+def _same_board(label: Label, slug: str) -> bool:
+    """A board can be keyed by the system's slug (`hublo`) or by the company's own host it is
+    served on (`careers.hublo.com`); either names the same board."""
+    slug = slug.lower()
+    return slug in (label.slug, urlsplit(label.careers_url).netloc.lower())
 
 
 def _expected_jobs(label: Label) -> tuple[str, ...] | None:

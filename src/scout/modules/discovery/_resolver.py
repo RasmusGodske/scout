@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field, replace
 from typing import Any
 from urllib.parse import urlsplit
@@ -48,6 +49,8 @@ class DiscoveryConfig:
     careers_words: list[str]
     common_paths: list[str]
     job_link_threshold: float = 0.6
+    # Probability above which Jev's "is this page an open job ad" keeps a fetched job page.
+    job_page_threshold: float = 0.5
     careers_choice_min_probability: float = 0.35
     max_job_links_per_page: int = 150
 
@@ -167,7 +170,9 @@ class Resolver:
             raise FetchError(f"{job_id} answered {response.status}")
         if canonical_url(response.final_url) != job_id and _key(response.final_url) != _key(job_id):
             return None
-        return _page_job(job_id, response, "")
+        job = _page_job(job_id, response, "")
+        # A page that still answers but says the job is gone is not listed any more.
+        return job if self._open_job_ads([job], None) else None
 
     # --- the cached route -----------------------------------------------------------------------
 
@@ -267,8 +272,11 @@ class Resolver:
         linked_listing = self._first_readable(linked)
         if linked_listing is not None:
             return self._board_result(domain, linked_listing, FoundBy.HOMEPAGE_LINK, known)
-        if listing is not None and listing.identifies_company:
-            return self._board_result(domain, listing, FoundBy.SLUG_GUESS, known)
+        # A guessed board that names this company but that the homepage does not link to is
+        # only a fallback: it may be another company with the same name (two "Mayflower"s) or
+        # a secondary board (a few ads on JOIN while the real list is on the company's site).
+        # The company's own careers page decides first.
+        fallback = listing if listing is not None and listing.identifies_company else None
 
         # 2. The careers link on the homepage.
         careers = self._careers_link(domain, homepage)
@@ -282,6 +290,9 @@ class Resolver:
             found_by = FoundBy.COMMON_PATH
             response = self._common_path(homepage)
         if response is None:
+            if fallback is not None:
+                note("guessed_board", used=True, why="no careers page on the site")
+                return self._board_result(domain, fallback, FoundBy.SLUG_GUESS, known)
             return ScrapeResult(
                 domain,
                 Status.NO_CAREERS_PAGE,
@@ -290,7 +301,13 @@ class Resolver:
             )
 
         # 4 and 5. A board behind the careers page, or the page's own job links.
-        return self._from_careers_page(domain, response, found_by, known)
+        result = self._from_careers_page(domain, response, found_by, known)
+        if fallback is not None and result.status is Status.PAGE and not result.jobs:
+            note("guessed_board", used=True, why="the careers page shows no jobs")
+            return self._board_result(domain, fallback, FoundBy.SLUG_GUESS, known)
+        if fallback is not None:
+            note("guessed_board", used=False, why=f"the careers page gave {result.status.value} with jobs")
+        return result
 
     def _from_careers_page(
         self, domain: str, response: Response, found_by: FoundBy | None, known: Known, hop: int = 0
@@ -328,19 +345,6 @@ class Resolver:
                 return self._from_careers_page(domain, rendered, found_by, known, hop)
 
         reason, problem = "", None
-        if not job_links and hop == 0:
-            # A careers landing page often links to the real list ("See open positions").
-            listing_page = self._listing_link(domain, response, links)
-            if listing_page is not None:
-                nested = self._try_page(listing_page)
-                if nested is None:
-                    reason = f"job list at {listing_page} could not be read (blocked or gone)"
-                    problem = Problem.JOB_LIST_UNREADABLE
-                else:
-                    result = self._from_careers_page(domain, nested, found_by, known, hop=1)
-                    if result.jobs or result.status is Status.BOARD:
-                        return result
-
         jobs_found: list[Job] = []
         for link in _dedupe(job_links):
             try:
@@ -354,7 +358,25 @@ class Resolver:
                 break
             if job is not None:
                 jobs_found.append(job)
-        jobs = tuple(jobs_found)
+        jobs_found = _unique_pages(jobs_found)
+        try:
+            jobs = tuple(self._open_job_ads(jobs_found, response))
+        except BudgetExceeded as exc:
+            jobs = tuple(jobs_found)
+            problem, reason = Problem.BUDGET_EXCEEDED, f"{exc}; job pages not verified"
+        if not jobs and problem is None and hop == 0:
+            # No real job ads here (none linked, or the ones linked were not open ads): a careers
+            # landing page often links to the real list ("See open positions").
+            listing_page = self._listing_link(domain, response, links)
+            if listing_page is not None:
+                nested = self._try_page(listing_page)
+                if nested is None:
+                    reason = f"job list at {listing_page} could not be read (blocked or gone)"
+                    problem = Problem.JOB_LIST_UNREADABLE
+                else:
+                    result = self._from_careers_page(domain, nested, found_by, known, hop=1)
+                    if result.jobs or result.status is Status.BOARD:
+                        return result
         if not jobs and problem is None:
             problem = Problem.NO_JOBS_FOUND
             reason = reason or f"no job ads recognised among {len(candidates)} links on the careers page"
@@ -446,7 +468,12 @@ class Resolver:
         tried = []
         for path in self._config.common_paths:
             response = self._try_page(base + path)
-            if response is not None and _key(response.final_url) != home_key:
+            # Some sites answer any path with the homepage instead of a 404.
+            if (
+                response is not None
+                and _key(response.final_url) != home_key
+                and not _same_content(response, homepage)
+            ):
                 note("common_paths", tried=tried, found=path)
                 return response
             tried.append(path)
@@ -475,7 +502,7 @@ class Resolver:
     def _careers_link(self, domain: str, homepage: Response) -> str | None:
         links = collect_links(homepage.text, homepage.final_url)
         candidates = careers_candidates(links, self._config.careers_words)
-        if len(candidates) == 1:
+        if len(candidates) == 1 and not self._jev.available:
             note(
                 "careers_link",
                 method="single_keyword",
@@ -483,9 +510,14 @@ class Resolver:
                 text=candidates[0].text[:80],
             )
             return candidates[0].url
-        pool = candidates or [
-            l for l in links if same_site(l.url, homepage.final_url) or _is_board_url(l.url)
+        # With Jev, even a lone keyword match is only a candidate: "job" can be a person's name.
+        # Jev chooses among the keyword matches first, then the site's other links.
+        others = [
+            l
+            for l in links
+            if l not in candidates and (same_site(l.url, homepage.final_url) or _is_board_url(l.url))
         ]
+        pool = candidates + others
         if not pool:
             note("careers_link", method="no_links", chosen=None)
             return None
@@ -549,6 +581,58 @@ class Resolver:
         note(purpose, method="jev", options=len(pool), chosen=chosen, probability=round(probability, 3))
         return chosen
 
+    def _open_job_ads(self, jobs: list[Job], careers_page: Response | None) -> list[Job]:
+        """The fetched job pages that really are ads for one open job. One batched Jev yes/no
+        per page; without Jev, only pages whose title says the job is gone are dropped.
+        Known jobs (no content, not fetched again) pass through unchecked."""
+        to_check = [j for j in jobs if j.content is not None]
+        if not to_check:
+            return jobs
+        questions = {
+            f"p{i}": {
+                "page": {
+                    "url": j.url,
+                    "title": j.details.title or "(no title)",
+                    "text": j.content.text[:1500] if j.content else "",
+                },
+                "question": (
+                    "Is `page` an ad for one specific position at this company that is open now? "
+                    "Internships, apprenticeships, trainee and student positions count. A page "
+                    "saying the job was not found, is closed, filled or expired does not; nor does "
+                    "a person's profile, a product or service page, a news or blog article, a list "
+                    "of several jobs, or a general page about working at the company."
+                ),
+            }
+            for i, j in enumerate(to_check)
+        }
+        state = {
+            "careers_page_url": careers_page.final_url if careers_page else "",
+            "company_job_pages": True,
+        }
+        try:
+            answers = self._jev.nouls(state, questions, purpose="job_page")
+            scores = {to_check[int(q[1:])].id: p for q, p in answers.items()}
+            keep = {job_id for job_id, p in scores.items() if p >= self._config.job_page_threshold}
+            method = "jev"
+        except (JevUnavailable, JevError) as exc:
+            log.info("jev unavailable for job pages (%s); checking titles only", exc)
+            keep = {j.id for j in to_check if not _GONE.search(j.details.title or "")}
+            scores = {}
+            method = "title_keywords"
+        rejected = [j for j in to_check if j.id not in keep]
+        note(
+            "job_pages",
+            method=method,
+            checked=len(to_check),
+            rejected=[
+                {"url": j.url, "title": j.details.title, "probability": round(scores.get(j.id, 0.0), 3)}
+                for j in rejected[:20]
+            ],
+            # The lowest score among kept pages: how close the threshold is to cutting a real job.
+            lowest_kept=round(min((scores[j] for j in keep if j in scores), default=1.0), 3),
+        )
+        return [j for j in jobs if j.content is None or j.id in keep]
+
     def _judge_job_links(self, links: list[Link], page: Response, known: Known) -> dict[str, float]:
         verdicts = {l.url: known.link_verdicts[l.url] for l in links if l.url in known.link_verdicts}
         new = [l for l in links if l.url not in verdicts]
@@ -580,6 +664,15 @@ class Resolver:
         return verdicts
 
 
+_GONE = re.compile(
+    r"(not found|404|no longer (available|open|accepting)|page (not found|doesn.t exist)|"
+    r"position (has been )?(filled|closed)|job (is )?(closed|expired)|ikke fundet|ikke længere|"
+    r"nicht gefunden|nicht mehr verfügbar|introuvable|n.est plus disponible|niet gevonden|"
+    r"niet meer beschikbaar|expired|udløbet|abgelaufen)",
+    re.I,
+)
+
+
 class _NoHomepage(Exception):
     def __init__(self, problem: Problem, reason: str) -> None:
         super().__init__(reason)
@@ -599,6 +692,26 @@ def _page_job(job_id: str, response: Response, link_text: str) -> Job:
         details=details,
         details_sources=sources,
     )
+
+
+def _same_content(a: Response, b: Response) -> bool:
+    """Whether two pages are the same page under different URLs: same title, near-same size."""
+    title_a, title_b = page_title(a.text), page_title(b.text)
+    if not title_a or title_a != title_b:
+        return False
+    return abs(len(a.text) - len(b.text)) <= 0.05 * max(len(b.text), 1)
+
+
+def _unique_pages(jobs: list[Job]) -> list[Job]:
+    """One job per page: two links (with and without a query, say) can land on the same ad."""
+    seen: set[str] = set()
+    out = []
+    for job in jobs:
+        key = canonical_url(job.url)
+        if key not in seen:
+            seen.add(key)
+            out.append(job)
+    return out
 
 
 def _route_summary(route: ScrapeResult) -> str:

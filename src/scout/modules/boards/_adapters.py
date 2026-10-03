@@ -275,18 +275,22 @@ class Recruitee:
         return bool(re.match(r"^[a-z0-9][a-z0-9-]{1,62}$", slug))
 
     def fetch(self, fetcher: Fetcher, ref: BoardRef) -> Listing | None:
-        url = f"https://{ref.slug}.recruitee.com/api/offers"
-        body = read_feed(fetcher.get(url, accept="application/json"))
+        body = read_feed(fetcher.get(f"{_recruitee_site(ref)}/api/offers", accept="application/json"))
         return None if body is None else parse_recruitee(ref, body)
 
     def fetch_job(self, fetcher: Fetcher, ref: BoardRef, job_id: str) -> Job | None:
-        url = f"https://{ref.slug}.recruitee.com/api/offers/{quote(job_id)}"
+        url = f"{_recruitee_site(ref)}/api/offers/{quote(job_id)}"
         body = read_feed(fetcher.get(url, accept="application/json"))
         if body is None:
             return None
         offer = json.loads(body).get("offer")
         jobs = parse_recruitee(ref, json.dumps({"offers": [offer]})).jobs if offer else ()
         return jobs[0] if jobs else None
+
+
+def _recruitee_site(ref: BoardRef) -> str:
+    """`<slug>.recruitee.com`, or the company's own host when the board is served there."""
+    return f"https://{ref.slug}" if "." in ref.slug else f"https://{ref.slug}.recruitee.com"
 
 
 def parse_recruitee(ref: BoardRef, body: str) -> Listing:
@@ -735,7 +739,7 @@ def public_url(ref: BoardRef) -> str:
     if ref.system == "workable":
         return f"https://apply.workable.com/{s}/"
     if ref.system == "recruitee":
-        return f"https://{s}.recruitee.com/"
+        return f"https://{s if '.' in s else s + '.recruitee.com'}/"
     if ref.system == "teamtailor":
         return f"https://{s if '.' in s else s + '.teamtailor.com'}/jobs"
     if ref.system == "emply":
