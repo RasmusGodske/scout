@@ -19,6 +19,7 @@ from scout.modules.pages._links import (
     job_link_candidates,
     job_link_heuristic,
     same_site,
+    sitemap_entries,
 )
 from scout.modules.pages._text import extract_text, page_title
 
@@ -38,4 +39,5 @@ __all__ = [
     "normalize_date",
     "page_title",
     "same_site",
+    "sitemap_entries",
 ]

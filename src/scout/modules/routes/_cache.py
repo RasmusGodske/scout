@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS routes (
     board_extra    TEXT NOT NULL DEFAULT '',
     found_by       TEXT NOT NULL DEFAULT '',
     job_count      INTEGER NOT NULL DEFAULT 0,
+    careers_rendered INTEGER NOT NULL DEFAULT 0,
     scraped_at     TEXT NOT NULL,
     last_ok_at     TEXT,
     verified_at    TEXT
@@ -65,6 +66,7 @@ class RouteCache:
         self._lock = threading.Lock()
         with self._lock:
             self._db.executescript(_SCHEMA)
+            self._migrate()
 
     def save(self, result: ScrapeResult, now: datetime, *, verified: bool) -> None:
         """Record one scrape's route. A failed scrape records only its problem: the route the
@@ -87,14 +89,15 @@ class RouteCache:
             board = result.board or BoardRef("", "")
             self._db.execute(
                 """INSERT INTO routes (domain, status, problem, reason, careers_url, board_system,
-                       board_slug, board_extra, found_by, job_count, scraped_at, last_ok_at,
-                       verified_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                       board_slug, board_extra, found_by, job_count, careers_rendered, scraped_at,
+                       last_ok_at, verified_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT(domain) DO UPDATE SET status=excluded.status,
                        problem=excluded.problem, reason=excluded.reason,
                        careers_url=excluded.careers_url, board_system=excluded.board_system,
                        board_slug=excluded.board_slug, board_extra=excluded.board_extra,
                        found_by=excluded.found_by, job_count=excluded.job_count,
+                       careers_rendered=excluded.careers_rendered,
                        scraped_at=excluded.scraped_at, last_ok_at=excluded.last_ok_at,
                        verified_at=COALESCE(excluded.verified_at, routes.verified_at)""",
                 (
@@ -108,6 +111,7 @@ class RouteCache:
                     board.extra,
                     result.found_by.value if result.found_by else "",
                     len(result.jobs),
+                    int(result.careers_rendered),
                     at,
                     at,
                     at if verified else None,
@@ -120,6 +124,13 @@ class RouteCache:
                        judged_at=excluded.judged_at""",
                 [(result.domain, url, p, at) for url, p in result.link_verdicts],
             )
+
+    def _migrate(self) -> None:
+        """Add columns introduced after a database was created (the schema only creates tables)."""
+        columns = {row[1] for row in self._db.execute("PRAGMA table_info(routes)")}
+        if "careers_rendered" not in columns:
+            self._db.execute("ALTER TABLE routes ADD COLUMN careers_rendered INTEGER NOT NULL DEFAULT 0")
+            self._db.commit()
 
     def get(self, domain: str) -> CachedRoute | None:
         with self._lock:
@@ -139,6 +150,7 @@ class RouteCache:
             found_by=FoundBy(row["found_by"]) if row["found_by"] else None,
             problem=Problem(row["problem"]) if row["problem"] else None,
             reason=row["reason"],
+            careers_rendered=bool(row["careers_rendered"]),
         )
         return CachedRoute(route, row["scraped_at"], row["last_ok_at"], row["verified_at"], row["job_count"])
 

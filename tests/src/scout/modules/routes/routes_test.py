@@ -61,3 +61,27 @@ def test_a_first_scrape_that_fails_is_recorded_as_failed() -> None:
     cache = RouteCache(":memory:")
     cache.save(ScrapeResult("new.dk", Status.FAILED, problem=Problem.BLOCKED), DAY1, verified=False)
     assert cache.get("new.dk").route.status is Status.FAILED  # type: ignore[union-attr]
+
+
+def test_the_render_flag_is_kept_and_old_databases_are_migrated(tmp_path) -> None:
+    import sqlite3
+    from dataclasses import replace
+
+    path = tmp_path / "old.sqlite"
+    db = sqlite3.connect(path)  # a database from before the careers_rendered column
+    db.execute(
+        "CREATE TABLE routes (domain TEXT PRIMARY KEY, status TEXT NOT NULL, problem TEXT NOT NULL DEFAULT '', "
+        "reason TEXT NOT NULL DEFAULT '', careers_url TEXT NOT NULL DEFAULT '', board_system TEXT NOT NULL DEFAULT '', "
+        "board_slug TEXT NOT NULL DEFAULT '', board_extra TEXT NOT NULL DEFAULT '', found_by TEXT NOT NULL DEFAULT '', "
+        "job_count INTEGER NOT NULL DEFAULT 0, scraped_at TEXT NOT NULL, last_ok_at TEXT, verified_at TEXT)"
+    )
+    db.execute("INSERT INTO routes (domain, status, scraped_at) VALUES ('old.dk', 'page', '2026-10-01')")
+    db.commit()
+    db.close()
+    cache = RouteCache(path)
+    assert cache.get("old.dk").route.careers_rendered is False  # type: ignore[union-attr]
+    page = ScrapeResult("acme.dk", Status.PAGE, "https://acme.dk/karriere", careers_rendered=True)
+    cache.save(page, DAY1, verified=True)
+    assert cache.get("acme.dk").route.careers_rendered is True  # type: ignore[union-attr]
+    cache.save(replace(page, careers_rendered=False), DAY2, verified=False)
+    assert cache.get("acme.dk").route.careers_rendered is False  # type: ignore[union-attr]

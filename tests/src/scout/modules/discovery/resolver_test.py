@@ -141,7 +141,7 @@ def test_homepage_board_link_beats_a_stale_slug_guess(tmp_path: Path) -> None:
     web.json("https://boards-api.greenhouse.io/v1/boards/acme/jobs?content=true", gh)
     web.html("https://acme.dk/", '<a href="https://boards.greenhouse.io/acme">Jobs</a>' + FILLER)
     r = resolver(web, tmp=tmp_path).resolve("acme.dk")
-    assert r.board == BoardRef("greenhouse", "acme") and r.found_by is FoundBy.SLUG_GUESS
+    assert r.board == BoardRef("greenhouse", "acme") and r.found_by is FoundBy.HOMEPAGE_LINK
 
     web.html("https://acme.dk/", '<a href="https://acme.teamtailor.com/jobs">Jobs</a>' + FILLER)
     r = resolver(web, tmp=tmp_path).resolve("acme.dk")
@@ -439,3 +439,57 @@ def test_the_job_list_is_followed_when_the_only_job_link_is_not_a_job(tmp_path: 
     web.html("https://acme.teamtailor.com/jobs", "<p>jobs</p>" + "x" * 600)
     r = resolver(web, jev_judging({"/karriere/": 0.95}, choose="karriere"), tmp_path).resolve("acme.dk")
     assert r.board == BoardRef("teamtailor", "acme") and r.jobs
+
+
+# --- step 2: cheaper discovery ----------------------------------------------------------------
+
+
+def test_a_careers_page_is_found_in_the_sitemap(tmp_path: Path) -> None:
+    web = FakeWeb()
+    web.html("https://acme.dk/", f"<p>{FILLER}</p>")
+    web.text(
+        "https://acme.dk/sitemap.xml",
+        '<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        "<url><loc>https://acme.dk/om-os</loc></url><url><loc>https://acme.dk/jobs-at-acme</loc></url>"
+        "</urlset>",
+        content_type="application/xml",
+    )
+    web.html("https://acme.dk/jobs-at-acme", f"<a href='/jobs-at-acme/kok'>Kok</a>{FILLER}")
+    web.html("https://acme.dk/jobs-at-acme/kok", f"<h1>Kok</h1><p>{'Mad. ' * 100}</p>")
+    r = resolver(web, tmp=tmp_path).resolve("acme.dk")
+    assert r.found_by is FoundBy.SITEMAP and r.careers_url == "https://acme.dk/jobs-at-acme"
+    assert "https://acme.dk/careers" not in web.urls()  # no common paths tried
+
+
+def test_no_guessing_when_the_site_shows_its_jobs(tmp_path: Path) -> None:
+    web = FakeWeb()
+    careers_site(web, {"kok": "Kok"})
+    resolver(web, jev_judging({"/karriere/": 0.95}), tmp_path).resolve("acme.dk")
+    assert not [u for u in web.urls() if "greenhouse" in u or "ashby" in u or "teamtailor" in u]
+
+
+def test_guessing_is_the_last_resort_and_must_name_the_company(tmp_path: Path) -> None:
+    web = FakeWeb()
+    web.html("https://acme.dk/", f"<p>{FILLER}</p>")  # no careers page anywhere
+    web.text(
+        "https://api.ashbyhq.com/posting-api/job-board/acme",
+        (BOARDS_SUPPORT / "ashby_job_board.json").read_text(),
+    )
+    r = resolver(web, tmp=tmp_path).resolve("acme.dk")
+    assert r.status is Status.NO_CAREERS_PAGE  # Ashby names nobody: not trusted
+    teamtailor_feed(web)  # names Acme
+    r = resolver(web, tmp=tmp_path).resolve("acme.dk")
+    assert r.board == BoardRef("teamtailor", "acme") and r.found_by is FoundBy.SLUG_GUESS
+
+
+def test_no_careers_page_is_answered_from_the_cache_until_stale(tmp_path: Path) -> None:
+    web = FakeWeb()
+    web.html("https://acme.dk/", f"<p>{FILLER}</p>")
+    first = resolver(web, tmp=tmp_path).resolve("acme.dk")
+    assert first.status is Status.NO_CAREERS_PAGE
+    web.requests.clear()
+    cached = resolver(web, tmp=tmp_path).resolve("acme.dk", Known(previous=replace_jobs(first)))
+    assert cached.status is Status.NO_CAREERS_PAGE and cached.route_source is RouteSource.CACHED
+    assert web.urls() == []  # nothing fetched
+    resolver(web, tmp=tmp_path).resolve("acme.dk", Known(previous=replace_jobs(first), route_stale=True))
+    assert "https://acme.dk/" in web.urls()  # re-checked once stale

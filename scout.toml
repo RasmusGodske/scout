@@ -18,8 +18,16 @@ render_wait_ms = 2500
 max_retry_after_seconds = 60
 
 [fetch.host_intervals]
-# Seconds between requests to these hosts, where one per second is too many.
+# Seconds between requests to these hosts when it should differ from min_interval_seconds.
+# Workable rate-limits hard; the big hiring systems' public feeds are built for traffic, and
+# every company scraped shares their host, so one per second would queue all workers.
 "apply.workable.com" = 4.0
+"boards-api.greenhouse.io" = 0.2
+"api.lever.co" = 0.2
+"api.eu.lever.co" = 0.2
+"api.ashbyhq.com" = 0.2
+"api.hr-manager.net" = 0.5
+"join.com" = 0.5
 
 [jev]
 # Reached through OpenRouter, which serves TypeSafe's own /v1/systemone shape. For TypeSafe
@@ -73,8 +81,10 @@ max_job_links_per_page = 500
 route_max_age_days = 30
 
 [boards]
-# Systems tried by slug guess, in order. An adapter must exist for each.
-guess_systems = ["greenhouse", "lever", "ashby", "workable", "recruitee", "teamtailor", "hrmanager", "emply", "join", "hibob"]
+# Systems tried by slug guess, in order, and only when the company's own site shows no jobs.
+# An adapter must exist for each. Workable is left out: it rate-limits every guess (a board a
+# site links to is still read).
+guess_systems = ["greenhouse", "lever", "ashby", "recruitee", "teamtailor", "hrmanager", "emply", "join", "hibob"]
 # Suffixes appended to the domain stem to make extra slug guesses. Every suffix costs one
 # request per system per domain, so keep the list short; the benchmark says which pay off.
 slug_suffixes = ["aps"]
@@ -86,7 +96,7 @@ require_name_match = true
 [batch]
 # Domains resolved in parallel. Each worker that meets a JavaScript-only page starts its own
 # headless Chromium, so memory grows with this number.
-workers = 8
+workers = 16
 
 [api]
 # Scrapes and lookups served at once; more wait their turn. Each may run a headless browser.

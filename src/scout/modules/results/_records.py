@@ -33,6 +33,7 @@ class FoundBy(StrEnum):
 
     SLUG_GUESS = "slug_guess"
     HOMEPAGE_LINK = "homepage_link"
+    SITEMAP = "sitemap"
     COMMON_PATH = "common_path"
     REDIRECT = "redirect"
 
@@ -181,6 +182,9 @@ class ScrapeResult:
     # True when this scrape discovered the route or confirmed it on the homepage; the route
     # cache uses it to know when to re-check. Not output.
     route_verified: bool = False
+    # Whether the careers page needed the headless browser; cached with the route so a rerun
+    # renders only pages that need it. Not output.
+    careers_rendered: bool = False
 
     @property
     def found_jobs(self) -> bool:
@@ -190,6 +194,7 @@ class ScrapeResult:
         out = asdict(self)
         out.pop("link_verdicts")
         out.pop("route_verified")
+        out.pop("careers_rendered")
         if not with_raw:
             for job in out["jobs"]:
                 if job["content"]:

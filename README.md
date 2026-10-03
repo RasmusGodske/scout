@@ -113,11 +113,12 @@ the ad's prose, so any of them may be null. `details_sources` says where each ca
 
 ## How it finds the jobs, and keeps finding them
 
-**First scrape (discovery).** Guess the company on known hiring systems from its domain; read
-the homepage (a board it links to wins over a guess); find the careers link (careers words in
-English and Danish; when that's ambiguous, Jev picks); try common paths; detect a hiring system
-behind the careers page; otherwise Jev decides which links on the careers page are single job
-ads, all in one batched request. Details: [`src/scout/modules/discovery`](src/scout/modules/discovery/README.md).
+**First scrape (discovery).** The company's own site first: a hiring-system board the homepage
+links to; the careers link (Jev chooses, from links with careers words in about a dozen
+languages and the site's other links); the sitemap; common paths. On the careers page, a hiring
+system behind it, or Jev's batched yes/no per link ("a single job ad?") and then per fetched page
+("an open position?"). Only when the site shows no jobs is a board guessed from the domain, and
+only one whose feed names the company. Details: [`src/scout/modules/discovery`](src/scout/modules/discovery/README.md).
 
 **Later scrapes** go straight along the cached route: one feed request for a board company, one
 page fetch plus only new job pages for a custom-page company, and Jev only for links it hasn't

@@ -159,6 +159,22 @@ def canonical_url(url: str) -> str:
     return urlunsplit((parts.scheme.lower(), parts.netloc.lower(), path, urlencode(query), ""))
 
 
+def sitemap_entries(xml: str) -> tuple[list[str], list[str]]:
+    """(page URLs, child sitemap URLs) from a sitemap or sitemap index; empty for anything else."""
+    from lxml import etree
+
+    try:
+        root = etree.fromstring(xml.encode("utf-8"), parser=etree.XMLParser(recover=True))
+    except (ValueError, etree.XMLSyntaxError):
+        return [], []
+    if root is None:
+        return [], []
+    locs = [str(x).strip() for x in root.xpath("//*[local-name()='loc']/text()")]
+    if etree.QName(root).localname == "sitemapindex":
+        return [], locs
+    return locs, []
+
+
 def foreign_hosts(html: str, page_url: str) -> list[str]:
     """Hosts on other sites that the page links to (a), embeds (iframe) or loads scripts from,
     most frequent first. Where a careers page hands off to a hiring system shows up here."""

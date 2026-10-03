@@ -24,6 +24,7 @@ from scout.modules.pages import (
     job_link_heuristic,
     page_title,
     same_site,
+    sitemap_entries,
 )
 from scout.modules.results import (
     BoardRef,
@@ -98,6 +99,21 @@ class Resolver:
             prev = known.previous
             if prev is not None and not fresh and prev.status in (Status.BOARD, Status.PAGE):
                 return self._from_cached_route(domain, prev, known)
+            if (
+                prev is not None
+                and not fresh
+                and prev.status is Status.NO_CAREERS_PAGE
+                and not known.route_stale
+            ):
+                # Re-checked once the route is older than route_max_age_days, not on every scrape.
+                note("cached_no_careers_page")
+                return ScrapeResult(
+                    domain,
+                    Status.NO_CAREERS_PAGE,
+                    problem=Problem.NO_CAREERS_PAGE,
+                    reason="no careers page found when the site was last checked; it is re-checked periodically",
+                    route_source=RouteSource.CACHED,
+                )
             return replace(self._discover(domain, known), route_verified=True)
         except BudgetExceeded as exc:
             return _failed(domain, Problem.BUDGET_EXCEEDED, str(exc))
@@ -202,14 +218,17 @@ class Resolver:
             if listing is None:
                 return None
             return self._board_result(domain, listing, prev.found_by, known, prev.careers_url)
-        response = self._fetcher.page(prev.careers_url)
+        # The cached route says whether this page needs the headless browser.
+        response = self._fetcher.page(prev.careers_url, render=prev.careers_rendered)
         if response.status in (404, 410):
             return None
         if not response.ok:
             raise FetchError(f"{prev.careers_url} answered {response.status}")
         if _key(response.final_url) in (_key(f"https://{domain}/"), _key(f"https://www.{domain}/")):
             return None  # the careers page now redirects to the homepage
-        return self._from_careers_page(domain, response, prev.found_by, known)
+        return self._from_careers_page(
+            domain, response, prev.found_by, known, render_retry=prev.careers_rendered
+        )
 
     def _rediscover(
         self,
@@ -244,73 +263,85 @@ class Resolver:
         *,
         distrust: BoardRef | None = None,
     ) -> ScrapeResult:
-        # 1. Guess the board from the domain, then weigh it against what the homepage links to.
-        # The homepage is the stronger evidence: a slug-guessed board can be a stale one the
-        # company left (Molslinjen's old Teamtailor next to its live Emply), and a feed that
-        # names no company (Lever, Ashby) may be someone else's (`lunar` on Ashby is not
-        # lunar.app). So a guess wins outright only when the homepage links to it, or when the
-        # homepage links to no board and the feed names this company.
-        listing = self._boards.guess(domain)
-        if listing is not None and distrust is not None and _same_board(listing.ref, distrust):
-            listing = None
+        """Find where the company's jobs live, cheapest and most trustworthy evidence first: the
+        company's own site (homepage, careers link, sitemap, common paths). Guessing hiring
+        systems from the domain costs dozens of requests and rarely hits, so it runs only when
+        the site itself shows no jobs, and only a board whose feed names this company counts.
+        A board the stale-route check distrusts never wins by guess."""
         homepage = homepage or self._homepage(domain)
         if isinstance(homepage, _NoHomepage):
-            if listing is not None and listing.identifies_company:
-                return self._board_result(domain, listing, FoundBy.SLUG_GUESS, known)
+            guessed = self._guess(domain, distrust)
+            if guessed is not None:
+                note("guessed_board", used=True, why="homepage unreachable")
+                return self._board_result(domain, guessed, FoundBy.SLUG_GUESS, known)
             raise homepage
+
+        # 1. A hiring-system board the homepage links to.
         linked = detect_boards(homepage.text, homepage.final_url)
         note(
             "homepage",
             url=homepage.final_url,
             rendered=homepage.rendered,
             boards_linked=[f"{r.system}/{r.slug}" for r in linked[:5]],
-            guessed=f"{listing.ref.system}/{listing.ref.slug}" if listing else None,
         )
         keep_page("homepage", homepage.text)
-        if listing is not None and listing.ref in linked:
-            return self._board_result(domain, listing, FoundBy.SLUG_GUESS, known)
         linked_listing = self._first_readable(linked)
         if linked_listing is not None:
             return self._board_result(domain, linked_listing, FoundBy.HOMEPAGE_LINK, known)
-        # A guessed board that names this company but that the homepage does not link to is
-        # only a fallback: it may be another company with the same name (two "Mayflower"s) or
-        # a secondary board (a few ads on JOIN while the real list is on the company's site).
-        # The company's own careers page decides first.
-        fallback = listing if listing is not None and listing.identifies_company else None
 
-        # 2. The careers link on the homepage.
+        # 2. The careers link on the homepage; 3. the sitemap; 4. common paths.
         careers = self._careers_link(domain, homepage)
         found_by = FoundBy.HOMEPAGE_LINK
-        response = None
-        if careers is not None:
-            response = self._try_page(careers)
-
-        # 3. Common paths.
+        response = self._try_page(careers) if careers is not None else None
+        if response is None:
+            found_by = FoundBy.SITEMAP
+            response = self._sitemap_careers(domain, homepage)
         if response is None:
             found_by = FoundBy.COMMON_PATH
             response = self._common_path(homepage)
-        if response is None:
-            if fallback is not None:
-                note("guessed_board", used=True, why="no careers page on the site")
-                return self._board_result(domain, fallback, FoundBy.SLUG_GUESS, known)
-            return ScrapeResult(
-                domain,
-                Status.NO_CAREERS_PAGE,
-                problem=Problem.NO_CAREERS_PAGE,
-                reason="no careers link on the homepage and none of the common paths exist",
-            )
 
-        # 4 and 5. A board behind the careers page, or the page's own job links.
-        result = self._from_careers_page(domain, response, found_by, known)
-        if fallback is not None and result.status is Status.PAGE and not result.jobs:
-            note("guessed_board", used=True, why="the careers page shows no jobs")
-            return self._board_result(domain, fallback, FoundBy.SLUG_GUESS, known)
-        if fallback is not None:
-            note("guessed_board", used=False, why=f"the careers page gave {result.status.value} with jobs")
-        return result
+        # 5. A board behind the careers page, or the page's own job links.
+        result = None
+        if response is not None:
+            result = self._from_careers_page(domain, response, found_by, known)
+            if result.jobs or result.status is Status.BOARD:
+                return result
+
+        # 6. Last resort: guess the board from the domain.
+        guessed = self._guess(domain, distrust)
+        if guessed is not None:
+            why = "no careers page on the site" if result is None else "the careers page shows no jobs"
+            note("guessed_board", used=True, why=why)
+            return self._board_result(domain, guessed, FoundBy.SLUG_GUESS, known)
+        if result is not None:
+            return result
+        return ScrapeResult(
+            domain,
+            Status.NO_CAREERS_PAGE,
+            problem=Problem.NO_CAREERS_PAGE,
+            reason="no careers link on the homepage, none in the sitemap, and none of the common paths exist",
+        )
+
+    def _guess(self, domain: str, distrust: BoardRef | None) -> Listing | None:
+        """A board guessed from the domain, trusted only if its feed names this company: a
+        feed that names nobody (Lever, Ashby) may be another company's (`lunar` on Ashby is not
+        lunar.app), and with no link from the site there is nothing else to confirm it."""
+        listing = self._boards.guess(domain)
+        if listing is None or not listing.identifies_company:
+            return None
+        if distrust is not None and _same_board(listing.ref, distrust):
+            return None
+        return listing
 
     def _from_careers_page(
-        self, domain: str, response: Response, found_by: FoundBy | None, known: Known, hop: int = 0
+        self,
+        domain: str,
+        response: Response,
+        found_by: FoundBy | None,
+        known: Known,
+        hop: int = 0,
+        *,
+        render_retry: bool = True,
     ) -> ScrapeResult:
         careers_url = response.final_url
         redirected = not same_site(response.url, response.final_url)
@@ -337,7 +368,7 @@ class Resolver:
             borderline=sum(1 for p in scores if 0.3 <= p < self._config.job_link_threshold),
         )
 
-        if not job_links and not response.rendered:
+        if not job_links and not response.rendered and render_retry:
             # The page had enough navigation not to look empty, but its job list may be
             # injected by a script (an ATS widget). Render it once and look again.
             rendered = self._try_page(response.final_url, render=True)
@@ -390,6 +421,7 @@ class Resolver:
             problem=problem,
             jobs=jobs,
             link_verdicts=new_verdicts,
+            careers_rendered=response.rendered,
         )
 
     def _board_behind(self, response: Response) -> Listing | None:
@@ -460,6 +492,51 @@ class Resolver:
             log.info("careers page %s: %s", url, exc)
             return None
         return response if response.ok else None
+
+    def _sitemap_careers(self, domain: str, homepage: Response) -> Response | None:
+        """A careers page found in the site's sitemap: one request (plus up to three child
+        sitemaps) instead of trying every common path. Jev chooses when several URLs qualify."""
+        parts = urlsplit(homepage.final_url)
+        base = f"{parts.scheme}://{parts.netloc}"
+        urls, children = self._sitemap(f"{base}/sitemap.xml")
+        # Page sitemaps first: a careers page is a page, not a post or a product.
+        for child in sorted(children, key=lambda u: ("page" not in u.lower(), len(u)))[:3]:
+            more, _ = self._sitemap(child)
+            urls += more
+        links = [Link(u, "") for u in dict.fromkeys(urls) if same_site(u, homepage.final_url)][:5000]
+        candidates = sorted(
+            careers_candidates(links, self._config.careers_words),
+            key=lambda l: (-careers_score(l, self._config.careers_words), len(l.url)),
+        )[:40]
+        note("sitemap", urls=len(urls), candidates=len(candidates), sample=[l.url for l in candidates[:5]])
+        if not candidates:
+            return None
+        if len(candidates) == 1 or not self._jev.available:
+            chosen = candidates[0].url
+        else:
+            chosen = self._choose_link(
+                domain,
+                homepage,
+                candidates,
+                "These pages are from the company's sitemap. Which one is the page where the "
+                "company lists its open jobs (its careers, jobs or vacancies page)?",
+                purpose="sitemap_link",
+            )
+        if chosen is None:
+            return None
+        response = self._try_page(chosen)
+        if response is None or _same_content(response, homepage):
+            return None
+        return response
+
+    def _sitemap(self, url: str) -> tuple[list[str], list[str]]:
+        try:
+            response = self._fetcher.get(url, accept="application/xml,text/xml")
+        except (Blocked, FetchError):
+            return [], []
+        if not response.ok or url.endswith(".gz"):
+            return [], []
+        return sitemap_entries(response.text)
 
     def _common_path(self, homepage: Response) -> Response | None:
         parts = urlsplit(homepage.final_url)

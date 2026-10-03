@@ -173,7 +173,8 @@ def test_every_request_is_journaled_with_its_decisions(tmp_path: Path) -> None:
     ]
     assert "content" not in str(first["jobs"])  # titles and URLs only
     kinds = {e["kind"] for e in first["trace"]}
-    assert {"slug_guess", "homepage", "careers_page", "foreign_hosts"} <= kinds
+    assert {"homepage", "careers_link", "careers_page", "foreign_hosts"} <= kinds
+    assert "slug_guess" not in kinds  # the site showed its jobs, so nothing was guessed
     assert entries[1]["problem"] == "no_careers_page" and entries[1]["snapshots"] == ["homepage"]
     assert journal.snapshot_names(missed.request_id) == ["homepage"]
     assert entries[2]["listing_status"] == "listed"
