@@ -180,6 +180,12 @@ curl -H "Authorization: Bearer a-long-random-string" -H "Content-Type: applicati
 
 Or `docker compose up --build` with the keys in `.env` (see `docker-compose.yml`).
 
+**Published image.** Every push to `main` that passes the tests is built and pushed to
+`ghcr.io/rasmusgodske/scout:latest` (and `:sha-<commit>`); a tag `v1.2.0` also publishes `:1.2.0`
+and `:1.2` (`.github/workflows/image.yml`). The package is private: log in first with
+`echo $TOKEN | docker login ghcr.io -u RasmusGodske --password-stdin`, using a token with
+`read:packages`, then `docker pull ghcr.io/rasmusgodske/scout:latest`.
+
 | Variable | |
 |---|---|
 | `SCOUT_API_TOKEN` | Set: every `/v1` call needs `Authorization: Bearer <token>`. Unset: the API is open to anyone who can reach it (the log warns); for local or isolated networks only. `/healthz` is always open. |
