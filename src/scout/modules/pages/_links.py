@@ -1,0 +1,197 @@
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from urllib.parse import parse_qsl, urldefrag, urlencode, urljoin, urlsplit, urlunsplit
+
+from lxml import html as lxml_html
+
+_SKIP_SCHEMES = ("mailto:", "tel:", "javascript:", "data:", "sms:")
+_SOCIAL_HOSTS = (
+    "facebook.com",
+    "linkedin.com",
+    "instagram.com",
+    "twitter.com",
+    "x.com",
+    "youtube.com",
+    "tiktok.com",
+    "glassdoor.",
+    "pinterest.",
+    "vimeo.com",
+    "apple.com",
+    "google.com",
+)
+_FILE_SUFFIXES = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".zip", ".doc", ".docx", ".mp4")
+_LANG_PREFIX = re.compile(r"^/(da|en|dk|sv|no|de)(?=/|$)", re.I)
+
+
+@dataclass(frozen=True)
+class Link:
+    url: str
+    text: str
+
+
+def collect_links(html: str, base_url: str) -> list[Link]:
+    """Every distinct http(s) link on the page with its visible text (or aria-label/title).
+
+    Fragments are dropped, mail/phone/script links and files are skipped, and a URL seen twice
+    keeps the longest text it was given.
+    """
+    try:
+        doc = lxml_html.fromstring(html)
+    except (ValueError, lxml_html.etree.ParserError):
+        return []
+    base = doc.xpath("//base/@href")
+    base_url = urljoin(base_url, base[0]) if base else base_url
+    seen: dict[str, str] = {}
+    for a in doc.xpath("//a[@href]"):
+        href = (a.get("href") or "").strip()
+        if not href or href.startswith("#") or href.lower().startswith(_SKIP_SCHEMES):
+            continue
+        url = urldefrag(urljoin(base_url, href))[0]
+        parts = urlsplit(url)
+        if parts.scheme not in ("http", "https") or parts.path.lower().endswith(_FILE_SUFFIXES):
+            continue
+        text = " ".join((a.text_content() or "").split()) or a.get("aria-label") or a.get("title") or ""
+        if len(text) > len(seen.get(url, "")) or url not in seen:
+            seen[url] = text[:200]
+    return [Link(u, t) for u, t in seen.items()]
+
+
+def careers_candidates(links: list[Link], careers_words: list[str]) -> list[Link]:
+    """Links whose URL or text holds a careers word, best first, language variants merged.
+
+    `/da/karriere` and `/en/careers` on the same site count as one candidate (the first kept),
+    since either is fine.
+    """
+    scored: list[tuple[int, int, Link]] = []
+    for i, link in enumerate(links):
+        if _is_social(link.url):
+            continue
+        score = careers_score(link, careers_words)
+        if score > 0:
+            scored.append((-score, i, link))
+    scored.sort()
+    out: list[Link] = []
+    seen_keys: set[str] = set()
+    for _, _, link in scored:
+        key = _language_neutral(link.url)
+        if key not in seen_keys:
+            seen_keys.add(key)
+            out.append(link)
+    return out
+
+
+def careers_score(link: Link, careers_words: list[str]) -> int:
+    """2 per careers word in the link text, 1 per careers word in the URL path or host."""
+    text = link.text.lower()
+    parts = urlsplit(link.url)
+    where = (parts.netloc + parts.path).lower()
+    score = 0
+    for word in careers_words:
+        w = word.lower()
+        if _word_in(w, text):
+            score += 2
+        if _word_in(w.replace(" ", "-"), where):
+            score += 1
+    return score
+
+
+def job_link_candidates(links: list[Link], careers_url: str, limit: int) -> list[Link]:
+    """Links on a careers page that could be a single job ad: drops social, navigation back
+    to the careers page or the homepage, and links to other sites that are not job hosts.
+    """
+    careers = urlsplit(careers_url)
+    careers_key = _language_neutral(careers_url).rstrip("/")
+    site = _site(careers.netloc)
+    out: list[Link] = []
+    for link in links:
+        parts = urlsplit(link.url)
+        if _is_social(link.url):
+            continue
+        if _language_neutral(link.url).rstrip("/") == careers_key:
+            continue
+        if parts.path in ("", "/") and not parts.query:
+            continue
+        if _site(parts.netloc) != site and not _looks_like_job_url(link.url):
+            continue
+        out.append(link)
+    return out[:limit]
+
+
+def job_link_heuristic(link: Link, careers_url: str) -> float:
+    """A rough probability that a link is a single job ad, used only when Jev is unavailable.
+
+    A link that sits below the careers page or holds a job-ish path segment followed by a
+    further segment (an id or a slug) scores high.
+    """
+    url = link.url.lower()
+    careers_path = urlsplit(careers_url).path.rstrip("/").lower()
+    path = urlsplit(url).path.rstrip("/")
+    segments = [s for s in path.split("/") if s]
+    if _looks_like_job_url(url):
+        return 0.8
+    if (
+        careers_path
+        and path.startswith(careers_path + "/")
+        and len(segments) > len([s for s in careers_path.split("/") if s])
+    ):
+        return 0.7
+    if any(re.search(r"\d{3,}", s) for s in segments) and any(
+        k in url for k in ("job", "stilling", "position", "vacanc", "career", "karriere")
+    ):
+        return 0.7
+    return 0.1
+
+
+_TRACKING = re.compile(r"^(utm_.*|gclid|fbclid|msclkid|mc_[ce]id|_hs.*|ref|referrer|source|src|trk)$", re.I)
+
+
+def canonical_url(url: str) -> str:
+    """A job page's stable id: scheme and host lower-cased, `www.` kept as given, fragment,
+    tracking parameters and a trailing slash dropped, remaining query parameters sorted.
+    """
+    parts = urlsplit(urldefrag(url)[0].strip())
+    query = sorted(
+        (k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if not _TRACKING.match(k)
+    )
+    path = parts.path.rstrip("/") or "/"
+    return urlunsplit((parts.scheme.lower(), parts.netloc.lower(), path, urlencode(query), ""))
+
+
+def same_site(a: str, b: str) -> bool:
+    return _site(urlsplit(a).netloc) == _site(urlsplit(b).netloc)
+
+
+_JOB_URL = re.compile(
+    r"/(job|jobs|stilling|stillinger|position|positions|vacancy|vacancies|opening|openings|"
+    r"careers?|karriere|ad|o|j)/[^/?#]{3,}",
+    re.I,
+)
+
+
+def _looks_like_job_url(url: str) -> bool:
+    path = urlsplit(url).path
+    return bool(_JOB_URL.search(path)) and not path.rstrip("/").lower().endswith(
+        ("/jobs", "/careers", "/karriere", "/stillinger")
+    )
+
+
+def _word_in(word: str, haystack: str) -> bool:
+    return re.search(r"(?<![a-zæøå])" + re.escape(word) + r"(?![a-zæøå])", haystack) is not None
+
+
+def _language_neutral(url: str) -> str:
+    parts = urlsplit(url)
+    return parts.netloc.lower().removeprefix("www.") + _LANG_PREFIX.sub("", parts.path)
+
+
+def _site(netloc: str) -> str:
+    host = netloc.lower().split(":")[0]
+    labels = host.split(".")
+    return ".".join(labels[-2:]) if len(labels) >= 2 else host
+
+
+def _is_social(url: str) -> bool:
+    host = urlsplit(url).netloc.lower()
+    return any(host == s or host.endswith("." + s) or s in host for s in _SOCIAL_HOSTS)

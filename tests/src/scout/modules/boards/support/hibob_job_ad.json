@@ -1,0 +1,88 @@
+{
+ "filterGroups": {
+  "departments": [
+   {
+    "serverId": "265204383",
+    "value": "General application"
+   }
+  ],
+  "sites": [
+   {
+    "serverId": "2556616",
+    "value": "Copenhagen"
+   },
+   {
+    "serverId": "2556618",
+    "value": "London"
+   }
+  ],
+  "jobTypes": [
+   {
+    "serverId": "Permanent",
+    "value": "Permanent"
+   }
+  ],
+  "workspaceTypes": [
+   {
+    "serverId": "hybrid",
+    "value": "Hybrid"
+   },
+   {
+    "serverId": "on_site",
+    "value": "On site"
+   }
+  ]
+ },
+ "jobAdDetails": [
+  {
+   "id": "340dbb78-164e-4c82-b7aa-6b88d2661eea",
+   "title": "Expression of interest",
+   "departmentId": "265204383",
+   "department": "General application",
+   "employmentTypeId": "Permanent",
+   "employmentType": "Permanent",
+   "siteId": 2556616,
+   "site": "Copenhagen",
+   "country": "Denmark",
+   "language": "en",
+   "description": "We're always excited to connect with talented professionals who share our vision. If you believe your skills and experience would be a great fit for Dixa, we'd love to hear from you. Submit your resume below, and our team will reach out when an opportunity aligns with your expertise.",
+   "requirements": null,
+   "responsibilities": null,
+   "benefits": null,
+   "sectionLabels": null,
+   "publishedAt": "2025-10-14T12:58:32.138726405Z",
+   "workspaceTypeId": "hybrid",
+   "workspaceType": "Hybrid",
+   "payTransparencyMinSalary": null,
+   "payTransparencyMaxSalary": null,
+   "payTransparencySalaryCurrency": null,
+   "payTransparencySalaryPayPeriod": null,
+   "payTransparencySalaryAdditionalInfo": null
+  },
+  {
+   "id": "b94be0ce-4a55-462f-99a6-5246395b3c08",
+   "title": "Expression of interest",
+   "departmentId": "265204383",
+   "department": "General application",
+   "employmentTypeId": "Permanent",
+   "employmentType": "Permanent",
+   "siteId": 2556618,
+   "site": "London",
+   "country": "United Kingdom",
+   "language": "en",
+   "description": "We're always excited to connect with talented professionals who share our vision. If you believe your skills and experience would be a great fit for Dixa, we'd love to hear from you. Submit your resume below, and our team will reach out when an opportunity aligns with your expertise.",
+   "requirements": "",
+   "responsibilities": "",
+   "benefits": "",
+   "sectionLabels": null,
+   "publishedAt": "2026-02-27T15:42:31.845195914Z",
+   "workspaceTypeId": "on_site",
+   "workspaceType": "On site",
+   "payTransparencyMinSalary": null,
+   "payTransparencyMaxSalary": null,
+   "payTransparencySalaryCurrency": null,
+   "payTransparencySalaryPayPeriod": null,
+   "payTransparencySalaryAdditionalInfo": null
+  }
+ ]
+}

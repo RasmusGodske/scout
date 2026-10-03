@@ -1,0 +1,12 @@
+#!/bin/bash
+echo ""
+echo "=================================================="
+echo " scout dev container ready."
+echo ""
+echo " Tools: python3.12, poetry, playwright (chromium),"
+echo "        claude, gh, git, zsh."
+echo ""
+echo " Try:   poetry run scout scrape lunar.app"
+echo " API:   poetry run scout serve"
+echo " Tests: poetry run pytest   (live: -m network)"
+echo "=================================================="

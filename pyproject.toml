@@ -1,0 +1,52 @@
+[project]
+name = "scout"
+version = "0.1.0"
+description = "Find a company's careers page and its open job listings"
+authors = [
+    {name = "RasmusGodske",email = "rasmusgodske@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "httpx (>=0.28.1,<0.29.0)",
+    "lxml (>=6.1.3,<7.0.0)",
+    "lxml-html-clean (>=0.4.5,<0.5.0)",
+    "trafilatura (>=2.3.0,<3.0.0)",
+    "playwright (>=1.63.0,<2.0.0)",
+    "python-dotenv (>=1.2.4,<2.0.0)",
+    "fastapi (>=0.142.2,<0.143.0)",
+    "uvicorn (>=0.54.0,<0.55.0)"
+]
+
+[project.scripts]
+scout = "scout.cli:main"
+
+[tool.poetry]
+packages = [{ include = "scout", from = "src" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["*_test.py"]
+# Untagged tests may not touch the network; tests/conftest.py fails them if they try.
+markers = ["network: reaches real websites and vendor APIs; run with `-m network`"]
+addopts = "-m 'not network'"
+pythonpath = ["tests"]
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]
+
+[tool.ruff]
+line-length = 110
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501", "E741"]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.1.1,<10.0.0)",
+    "ruff (>=0.16.10,<0.17.0)"
+]

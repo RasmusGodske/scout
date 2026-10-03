@@ -1,0 +1,17 @@
+# Hand-checked benchmark labels. One row per domain.
+# system: a board system (greenhouse, lever, ashby, workable, recruitee, teamtailor, hrmanager,
+#   emply, join, hibob), empty for a custom careers page, or no_careers_page.
+# open_jobs: how many jobs were open on the day of labelling; blank if not counted.
+# labelled_by: who drafted the row. checked_by: filled in by Rasmus once verified; only checked
+#   rows count towards the real hit rate (`scout bench --checked-only`).
+# These seed rows were drafted by Claude on 2026-10-03 from direct requests to each site and
+# vendor feed, not from scout's own output. The ~100 Apollo domains replace and extend them.
+domain,careers_url,system,slug,open_jobs,labelled_by,checked_by,notes
+lunar.app,https://jobs.lunar.app/jobs,teamtailor,lunar,,claude,,"Teamtailor on custom host jobs.lunar.app; an unrelated US 'Lunar' has an Ashby board under slug lunar"
+molslinjen.dk,https://molslinjen.career.emply.com/da/ledige-stillinger,emply,molslinjen,,claude,,"Homepage links Emply; a stale Teamtailor board also exists under molslinjen"
+regionsyddanmark.dk,,hrmanager,regionsyddanmark,267,claude,,"HR Manager positionlist reported PositionCountCustomer=267"
+poweredbysous.com,https://poweredbysous.com/careers,join,poweredbysous,7,claude,,"Own job pages plus JOIN; JOIN company page total=7"
+dixa.com,https://dixa.careers.hibob.com/jobs,hibob,dixa,2,claude,,"HiBob job-ad API returned 2 ads"
+siteimprove.com,https://careers.siteimprove.com/open-positions/,,,,claude,,"Custom page; job list rendered by script"
+planday.com,https://www.planday.com/careers,,,,claude,,"Jobs listed on careers.xero.com (Xero owns Planday), which answers 403 to our bot user agent"
+airbnb.com,,greenhouse,airbnb,,claude,,"Greenhouse board feed"

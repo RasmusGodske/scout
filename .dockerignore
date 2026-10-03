@@ -1,0 +1,11 @@
+# Only what the image needs: pyproject.toml, poetry.lock, README.md, src/, scout.toml.
+.git
+.venv
+.env
+.devcontainer
+data
+tests
+benchmark
+**/__pycache__
+.pytest_cache
+.ruff_cache

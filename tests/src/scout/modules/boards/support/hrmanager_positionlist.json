@@ -1,0 +1,704 @@
+{
+ "CustomerAlias": "regionsyddanmark",
+ "CustomerName": "Region Syddanmark",
+ "TransactionStatus": {
+  "Description": "The operation completed successfully.",
+  "StatusCode": 0
+ },
+ "Items": [
+  {
+   "CustomerAlias": "regionsyddanmark",
+   "CustomerName": "Region Syddanmark",
+   "TransactionStatus": {
+    "Description": "The operation completed successfully.",
+    "StatusCode": 0
+   },
+   "AdvertisementUrl": "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=237188&DepartmentId=6822&MediaId=5",
+   "AdvertisementUrlSecure": "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=237188&DepartmentId=6822&MediaId=5",
+   "Advertisements": [
+    {
+     "Content": "<p>Vi søger pr. 1.12.2026 eller efter aftale 1 logistikmedarbejder til fastansættelse i Depotservice Sønderborg.</p>\r\n\r\n<p>Du har et smil på læben og har et <strong>stort servicegen</strong> og det ligger dig naturligt at give en ekstra hånd. Du vægter gode kollegaer højt og bidrager naturligvis til et <strong>godt arbejdsmiljø</strong>, hvor alle har det godt. </p>\r\n\r\n<p>Vi er en afdeling hvor<strong> vi vil hinanden</strong> og forstår hvor vigtigt det er at vi et <strong>TEAM</strong>. Du respekterer og arbejder gerne efter <strong>standarder</strong>. Du har en <strong>god fysik</strong> der kan klare løft, skub og træk og <strong>din fleksibilitet er høj</strong>.</p>\r\n\r\n<p>Lager & Depotservice løfter alle opgaver i Sygehus Sønderjylland der vedrører varemodtagelse af varer, transport af varer og gods, pluk og pak, samt forsyningslogistik af rene og sterile varer. Depotservice sørger specifikt for bestilling og på plads lægning af varer ude på sygehusets afdelinger.</p>\r\n\r\n<p><strong>Vi forventer</strong></p>\r\n\r\n<ul>\r\n\t<li>Du er en holdspiller og bidrager til et positivt og rart miljø</li>\r\n\t<li>Du tager ejerskab og har overblik</li>\r\n\t<li>Du er mødestabil</li>\r\n\t<li>Vægter kvalitet og hygiejne højt</li>\r\n\t<li>Kan arbejde efter de gældende regler og standarder</li>\r\n</ul>\r\n\r\n<p><strong>Dine arbejdsopgaver</strong></p>\r\n\r\n<ul>\r\n\t<li>Bestilling og opfyldning af varer</li>\r\n\t<li>Rengøring af skabe og depoter</li>\r\n\t<li>Varemodtagelse og kontrol af modtaget varer</li>\r\n\t<li>Træde til på lageret i spidsbelastninger</li>\r\n</ul>\r\n\r\n<p><strong>Yderligere information:</strong></p>\r\n\r\n<ul>\r\n\t<li>Der stilles uniform til rådighed.</li>\r\n\t<li>Arbejdstiden vil ligge i tidsrummet 6:00 – 17:00 på hverdage, med mulighed for weekendarbejde på sigt, efter kendt arbejdsplan, dog er arbejdstiden pt. 7:00-14:24 </li>\r\n\t<li>Løn og ansættelsesforhold i henhold til gældende overenskomst mellem FOA og Danske Regioner</li>\r\n</ul>\r\n\r\n<p>Regionen er forpligtet til at oplyse dig om startlønnen for stillingen. Du får oplyst grundløn, centralt fastsatte tillæg og pension i overenskomsten for Sygehusportører - overenskomst 32.16.1 - løn pr. 1.4.2026. Udover startlønnen, kan lønnen indeholde eventuelt forhandlede tillæg afhængigt af stillingen, dine erfaringer og kvalifikationer. <a href=\"https://regionsyddanmark.dk/fagfolk/karriere-og-uddannelse/job-og-arbejdsforhold/ansogning-og-ansaettelse/startlon-for-stillinger-i-region-syddanmark\" target=\"_blank\">Se startløn for stillinger i Region Syddanmark</a></p>\r\n\r\n<p>Ansættelse hos Sygehus Sønderjylland er betinget af en tilfredsstillende børneattest</p>\r\n\r\n<p>Der indhentes referencer inden endelig ansættelse.</p>\r\n\r\n<p><strong>Yderligere oplysninger på hverdage mellem 8:00-14:00</strong><br />\r\nKan fås ved henvendelse til Koordinator: Louise Lykke Jensen 51440934 eller Lagerchef Vicky Tygesen Andersen 29744735</p>\r\n\r\n<p>Ansøgningsfrist: onsdag d. 7.10.2026. Ansættelsessamtaler forventes afholdt tirsdag d. 20.10.2026</p>\r\n\r\n<p>Der vil blive indhentet referencer inden ansættelse.<br />\r\nVi kontakter dig i ansættelsesprocessen på den e-mail adresse/tlf. der fremgår af din ansøgning.</p>\r\n",
+     "Created": "/Date(1790072278000+0200)/",
+     "Description": "",
+     "Id": 197446,
+     "ImageUrl": "https://cdn-recruiter.hr-manager.net/Export/Attachments/ViewAdvertisementImage.ashx?AdvertisementId=197446&cid=198",
+     "ImageUrlSecure": "https://cdn-recruiter.hr-manager.net/Export/Attachments/ViewAdvertisementImage.ashx?AdvertisementId=197446&cid=198",
+     "Introduction": "",
+     "LastUpdated": null,
+     "Video": {
+      "Embed": "",
+      "Url": null
+     }
+    }
+   ],
+   "ApplicationDue": "/Date(1791410399000+0200)/",
+   "ApplicationFormUrl": "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=237188&DepartmentId=6822&MediaId=5&SkipAdvertisement=true",
+   "ApplicationFormUrlSecure": "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=237188&DepartmentId=6822&MediaId=5&SkipAdvertisement=true",
+   "Created": "/Date(1790071835000+0200)/",
+   "CustomList1": {
+    "DeepPositionCount": 1,
+    "Id": 17690,
+    "Name": "Nej",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "CustomList10MultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 19547,
+     "Name": "Ikke en lægestilling",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList10TreeMultiSelection": [],
+   "CustomList11MultiSelection": [],
+   "CustomList11TreeMultiSelection": [],
+   "CustomList12MultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 19597,
+     "Name": "1",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList12TreeMultiSelection": [],
+   "CustomList13MultiSelection": [],
+   "CustomList13TreeMultiSelection": [],
+   "CustomList14MultiSelection": [],
+   "CustomList14TreeMultiSelection": [],
+   "CustomList15MultiSelection": [],
+   "CustomList15TreeMultiSelection": [],
+   "CustomList1MultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 17690,
+     "Name": "Nej",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList1Tree": {
+    "DeepPositionCount": 1,
+    "Id": 17690,
+    "Name": "Nej",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "CustomList1TreeMultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 17690,
+     "Name": "Nej",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList2": {
+    "DeepPositionCount": 1,
+    "Id": 19407,
+    "Name": "37 timer",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "CustomList2MultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 19407,
+     "Name": "37 timer",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList2Tree": {
+    "DeepPositionCount": 1,
+    "Id": 19407,
+    "Name": "37 timer",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "CustomList2TreeMultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 19407,
+     "Name": "37 timer",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList3": {
+    "DeepPositionCount": 1,
+    "Id": 19553,
+    "Name": "Fastansættelse",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "CustomList3MultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 19553,
+     "Name": "Fastansættelse",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList3Tree": null,
+   "CustomList3TreeMultiSelection": [],
+   "CustomList4MultiSelection": [],
+   "CustomList4TreeMultiSelection": [],
+   "CustomList5MultiSelection": [],
+   "CustomList5TreeMultiSelection": [],
+   "CustomList6MultiSelection": [],
+   "CustomList6TreeMultiSelection": [],
+   "CustomList7MultiSelection": [],
+   "CustomList7TreeMultiSelection": [],
+   "CustomList8MultiSelection": [],
+   "CustomList8TreeMultiSelection": [],
+   "CustomList9MultiSelection": [],
+   "CustomList9TreeMultiSelection": [],
+   "CustomText1": "Logistikmedarbejder til Depotservice Sønderborg",
+   "CustomText10": "",
+   "CustomText11": "",
+   "CustomText12": "",
+   "CustomText13": "",
+   "CustomText14": "",
+   "CustomText15": "",
+   "CustomText2": "",
+   "CustomText3": "",
+   "CustomText4": "",
+   "CustomText5": "",
+   "CustomText6": "",
+   "CustomText7": "",
+   "CustomText8": "",
+   "CustomText9": "",
+   "Department": {
+    "Address": "Kresten Philipsens Vej 15",
+    "City": "Aabenraa",
+    "Country": "",
+    "County": "",
+    "DeepPositionCount": 1,
+    "Id": 6822,
+    "Name": "Logistik- og Patientservice",
+    "POBox": "",
+    "PositionCount": 1,
+    "SubItems": [],
+    "Zip": "6200"
+   },
+   "DepartmentNamePlainText": "",
+   "DepartmentTree": {
+    "Address": "Damhaven 12",
+    "City": "Vejle",
+    "Country": "Danmark",
+    "County": "Syddanmark",
+    "DeepPositionCount": 4,
+    "Id": 4761,
+    "Name": "Region Syddanmark",
+    "POBox": "",
+    "PositionCount": 1,
+    "SubItems": [
+     {
+      "Address": "",
+      "City": "",
+      "Country": "",
+      "County": "",
+      "DeepPositionCount": 3,
+      "Id": 5562,
+      "Name": "Sundhed",
+      "POBox": "",
+      "PositionCount": 1,
+      "SubItems": [
+       {
+        "Address": "Kresten Philipsens Vej 15",
+        "City": "Aabenraa",
+        "Country": "",
+        "County": "",
+        "DeepPositionCount": 2,
+        "Id": 6583,
+        "Name": "Sygehus Sønderjylland",
+        "POBox": "",
+        "PositionCount": 1,
+        "SubItems": [
+         {
+          "Address": "Kresten Philipsens Vej 15",
+          "City": "Aabenraa",
+          "Country": "",
+          "County": "",
+          "DeepPositionCount": 1,
+          "Id": 6822,
+          "Name": "Logistik- og Patientservice",
+          "POBox": "",
+          "PositionCount": 1,
+          "SubItems": [],
+          "Zip": "6200"
+         }
+        ],
+        "Zip": "6200"
+       }
+      ],
+      "Zip": ""
+     }
+    ],
+    "Zip": "7100"
+   },
+   "Id": 237188,
+   "Languages": [
+    {
+     "Code": "da",
+     "IsDefault": true,
+     "IsoCode": "da-DK"
+    }
+   ],
+   "LastUpdated": "/Date(1790072458000+0200)/",
+   "Name": "1 Logistikmedarbejder til Depotservice Sønderborg på 37 timer pr. uge",
+   "PositionCategory": {
+    "DeepPositionCount": 1,
+    "Id": 19560,
+    "Name": "Lager- og logistikmedarbejder",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "PositionCategoryMultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 19560,
+     "Name": "Lager- og logistikmedarbejder",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "PositionCategoryTree": {
+    "DeepPositionCount": 2,
+    "Id": 12755,
+    "Name": "Service personale",
+    "PositionCount": 1,
+    "SubItems": [
+     {
+      "DeepPositionCount": 1,
+      "Id": 19560,
+      "Name": "Lager- og logistikmedarbejder",
+      "PositionCount": 1,
+      "SubItems": []
+     }
+    ]
+   },
+   "PositionCategoryTreeMultiSelection": [
+    {
+     "DeepPositionCount": 2,
+     "Id": 12755,
+     "Name": "Service personale",
+     "PositionCount": 1,
+     "SubItems": [
+      {
+       "DeepPositionCount": 1,
+       "Id": 19560,
+       "Name": "Lager- og logistikmedarbejder",
+       "PositionCount": 1,
+       "SubItems": []
+      }
+     ]
+    }
+   ],
+   "PositionLocation": {
+    "DeepPositionCount": 1,
+    "Id": 12781,
+    "Name": "Sønderborg",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "PositionLocationMultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 12781,
+     "Name": "Sønderborg",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "PositionLocationTree": {
+    "DeepPositionCount": 1,
+    "Id": 12781,
+    "Name": "Sønderborg",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "PositionLocationTreeMultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 12781,
+     "Name": "Sønderborg",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "PositionLogo": null,
+   "PositionType": "",
+   "ProjectAdministratorId": null,
+   "ProjectLeader": "(scrubbed)",
+   "ProjectLeaderEmail": "(scrubbed)",
+   "ProjectLeaderFirstName": "(scrubbed)",
+   "ProjectLeaderId": null,
+   "ProjectLeaderLastName": "(scrubbed)",
+   "ProjectParticipants": null,
+   "ProjectType": "RecruitmentProject",
+   "Published": "/Date(1790072451000+0200)/",
+   "ShortDescription": "",
+   "ShowApplyButton": true,
+   "StartDate": "/Date(1796079600000+0100)/",
+   "StartDateASAP": false,
+   "Users": null,
+   "WorkHours": "Fuld tid ",
+   "WorkPlace": "",
+   "WorkPlaceCoordinates": ""
+  },
+  {
+   "CustomerAlias": "regionsyddanmark",
+   "CustomerName": "Region Syddanmark",
+   "TransactionStatus": {
+    "Description": "The operation completed successfully.",
+    "StatusCode": 0
+   },
+   "AdvertisementUrl": "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=237101&DepartmentId=21909&MediaId=5",
+   "AdvertisementUrlSecure": "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=237101&DepartmentId=21909&MediaId=5",
+   "Advertisements": [
+    {
+     "Content": "<h2>Drømmer du om at blive radiolog – så kom til Esbjerg!</h2>\r\n\r\n<h3>Vi søger 2 introduktionslæger i radiologi til Røntgen, Skanning og Nuklearmedicin, Esbjerg og Grindsted Sygehus, med start pr. 1. november 2026 eller evt. efter aftale.</h3>\r\n\r\n<h3>Om afdelingen:</h3>\r\n\r\n<p>Vi er en afdeling, som vægter stor faglighed og et godt arbejdsmiljø med humor og plads til forskellighed. Vi har fokus på et gensidigt forpligtende uddannelsesmiljø og tværfagligt samarbejde, hvor der er god adgang til supervision og feedback, og hvor de uddannelsessøgende læger bidrager til afdelingens udvikling med løbende undervisning. Du vil som uddannelseslæge blive tilknyttet en fast vejleder. Der vil være god mulighed for at engagere sig i afdelingens forskningsprojekter eller selv bidrage med en god idé til et projekt. </p>\r\n\r\n<p>Afdelingen er organiseret i 7 sektioner med følgende subspecialer: <br />\r\n•    Abdominal-/uroradiologi inkl. onkoradiologi<br />\r\n•    Interventionsradiologi<br />\r\n•    Muskuloskeletal radiologi<br />\r\n•    Medicinsk radiologi incl. FAM-funktion<br />\r\n•    Neuroradiologi<br />\r\n•    Mammaradiologi<br />\r\n•    Nuklearmedicin </p>\r\n\r\n<p>Du kan forvente, at din ansættelse planlægges med ophold i alle sektioner, herunder fokusdage i mammografi og nuklearmedicinsk sektion. Vi forventer, at du er engageret, har gode samarbejdsevner og tager ansvar for egen læring samt arbejder aktivt med at opnå kompetencerne i relation til de 7 lægeroller. </p>\r\n\r\n<p>Vi har enheder i Esbjerg, Grindsted og Brørup og udfører i alt ca. 220.000 undersøgelser årligt. Dit arbejdssted vil være på sygehuset i Esbjerg. <br />\r\nSygehuset er pr. 1. september 2022 overgået til at være universitetshospital med kandidatuddannelse i medicin og fra 2026 også bacheloruddannelsen i medicin, som bringer os i selskab med de 4 øvrige universitetshospitaler i landet. Afdelingen indgår aktivt i undervisningen af de medicinstuderende og har vejlederopgaver som led i kandidatspecialer.</p>\r\n\r\n<p>Afdelingen har i de senere år gennemgået en omfattende renovering og råder p.t. over 5 MR-skannere og 4 CT-skannere, heraf én photon couting CT-skanner. Desuden har vi fuldt udstyrede UL- og interventionsrum samt konventionelt røntgen- og mammografiudstyr. Vores nuklearmedicinske afsnit råder over 3 PET-CT-skannere. Du vil stifte bekendtskab med alle modaliteterne under dit ophold. </p>\r\n\r\n<h3>Løn og ansættelsesvilkår:</h3>\r\n\r\n<p>Stillingen er vagtfri. Løn og ansættelsesvilkår er i henhold til gældende overenskomst.<br />\r\n”Regionen er forpligtet til at oplyse dig om startlønnen for stillingen. Du får oplyst grundløn, centralt fastsatte tillæg og pension i overenskomst Underordnede læger - overenskomst 33.06.1 - løn pr.1.4.2026. Udover startlønnen, kan lønnen indeholde eventuelt forhandlede tillæg afhængigt af stillingen, dine erfaringer og kvalifikationer. <a href=\"https://regionsyddanmark.dk/fagfolk/karriere-og-uddannelse/job-og-arbejdsforhold/ansogning-og-ansaettelse/startlon-for-stillinger-i-region-syddanmark\">Startløn for stillinger i Region Syddanmark</a></p>\r\n\r\n<p>Vi ser frem til at modtage din motiverede ansøgning med angivelse af kvalifikationer i forhold til de 7 lægeroller. </p>\r\n\r\n<h3>Yderligere oplysninger:</h3>\r\n\r\n<p>Hvis du har spørgsmål eller har lyst til at se afdelingen, er du velkommen til kontakte cheflæge Rikke Beese Dalby <a href=\"mailto:contact@example.com\" target=\"_blank\">contact@example.com</a> tlf. <a href=\"tel:3062 8065\" target=\"_blank\">3062 8065</a> eller uddannelsesansvarlig overlæge Francis Barrios Rivero<a href=\"mailto: contact@example.com\" target=\"_blank\"> contact@example.com</a></p>\r\n\r\n<p>Ansøgningsfrist: Fredag d. 9. oktober 2026 kl. 12.<br />\r\nAnsættelsessamtaler forventes afholdt tirsdag d. 20. oktober 2026.</p>\r\n",
+     "Created": "/Date(1789463798000+0200)/",
+     "Description": "",
+     "Id": 197352,
+     "ImageUrl": "https://cdn-recruiter.hr-manager.net/Export/Attachments/ViewAdvertisementImage.ashx?AdvertisementId=197352&cid=198",
+     "ImageUrlSecure": "https://cdn-recruiter.hr-manager.net/Export/Attachments/ViewAdvertisementImage.ashx?AdvertisementId=197352&cid=198",
+     "Introduction": "",
+     "LastUpdated": "/Date(1789987655000+0200)/",
+     "Video": {
+      "Embed": "<div style='position:relative;height:0;padding-bottom:56.25%'><iframe data-src='https://player.vimeo.com/video/1228778064?share=copy&fl=sv&fe=ci?dnt=1' data-cookieconsent='marketing' frameborder='0' style='position:absolute;width:100%;height:100%;left:0' allowfullscreen></iframe></div>",
+      "Url": null
+     }
+    }
+   ],
+   "ApplicationDue": "/Date(1791583199000+0200)/",
+   "ApplicationFormUrl": "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=237101&DepartmentId=21909&MediaId=5&SkipAdvertisement=true",
+   "ApplicationFormUrlSecure": "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=237101&DepartmentId=21909&MediaId=5&SkipAdvertisement=true",
+   "Created": "/Date(1789460992000+0200)/",
+   "CustomList1": {
+    "DeepPositionCount": 1,
+    "Id": 17690,
+    "Name": "Nej",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "CustomList10MultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 19550,
+     "Name": "Øvrige lægestillinger",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList10TreeMultiSelection": [],
+   "CustomList11MultiSelection": [],
+   "CustomList11TreeMultiSelection": [],
+   "CustomList12MultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 19598,
+     "Name": "2",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList12TreeMultiSelection": [],
+   "CustomList13MultiSelection": [],
+   "CustomList13TreeMultiSelection": [],
+   "CustomList14MultiSelection": [],
+   "CustomList14TreeMultiSelection": [],
+   "CustomList15MultiSelection": [],
+   "CustomList15TreeMultiSelection": [],
+   "CustomList1MultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 17690,
+     "Name": "Nej",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList1Tree": {
+    "DeepPositionCount": 1,
+    "Id": 17690,
+    "Name": "Nej",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "CustomList1TreeMultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 17690,
+     "Name": "Nej",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList2": {
+    "DeepPositionCount": 1,
+    "Id": 19407,
+    "Name": "37 timer",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "CustomList2MultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 19407,
+     "Name": "37 timer",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList2Tree": {
+    "DeepPositionCount": 1,
+    "Id": 19407,
+    "Name": "37 timer",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "CustomList2TreeMultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 19407,
+     "Name": "37 timer",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList3": {
+    "DeepPositionCount": 1,
+    "Id": 19553,
+    "Name": "Fastansættelse",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "CustomList3MultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 19553,
+     "Name": "Fastansættelse",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "CustomList3Tree": null,
+   "CustomList3TreeMultiSelection": [],
+   "CustomList4MultiSelection": [],
+   "CustomList4TreeMultiSelection": [],
+   "CustomList5MultiSelection": [],
+   "CustomList5TreeMultiSelection": [],
+   "CustomList6MultiSelection": [],
+   "CustomList6TreeMultiSelection": [],
+   "CustomList7MultiSelection": [],
+   "CustomList7TreeMultiSelection": [],
+   "CustomList8MultiSelection": [],
+   "CustomList8TreeMultiSelection": [],
+   "CustomList9MultiSelection": [],
+   "CustomList9TreeMultiSelection": [],
+   "CustomText1": "Introduktionslæge ",
+   "CustomText10": "",
+   "CustomText11": "",
+   "CustomText12": "",
+   "CustomText13": "",
+   "CustomText14": "",
+   "CustomText15": "",
+   "CustomText2": "",
+   "CustomText3": "",
+   "CustomText4": "",
+   "CustomText5": "",
+   "CustomText6": "",
+   "CustomText7": "",
+   "CustomText8": "",
+   "CustomText9": "",
+   "Department": {
+    "Address": "",
+    "City": "",
+    "Country": "",
+    "County": "",
+    "DeepPositionCount": 1,
+    "Id": 21909,
+    "Name": "Røntgen, Scanning og Nuklearmedicin",
+    "POBox": "",
+    "PositionCount": 1,
+    "SubItems": [],
+    "Zip": ""
+   },
+   "DepartmentNamePlainText": "",
+   "DepartmentTree": {
+    "Address": "Damhaven 12",
+    "City": "Vejle",
+    "Country": "Danmark",
+    "County": "Syddanmark",
+    "DeepPositionCount": 4,
+    "Id": 4761,
+    "Name": "Region Syddanmark",
+    "POBox": "",
+    "PositionCount": 1,
+    "SubItems": [
+     {
+      "Address": "",
+      "City": "",
+      "Country": "",
+      "County": "",
+      "DeepPositionCount": 3,
+      "Id": 5562,
+      "Name": "Sundhed",
+      "POBox": "",
+      "PositionCount": 1,
+      "SubItems": [
+       {
+        "Address": "Finsensgade 35",
+        "City": "Esbjerg",
+        "Country": "Danmark",
+        "County": "",
+        "DeepPositionCount": 2,
+        "Id": 6581,
+        "Name": "Esbjerg Sygehus Grindsted Sygehus Syddansk Universitetshospital",
+        "POBox": "",
+        "PositionCount": 1,
+        "SubItems": [
+         {
+          "Address": "",
+          "City": "",
+          "Country": "",
+          "County": "",
+          "DeepPositionCount": 1,
+          "Id": 21909,
+          "Name": "Røntgen, Scanning og Nuklearmedicin",
+          "POBox": "",
+          "PositionCount": 1,
+          "SubItems": [],
+          "Zip": ""
+         }
+        ],
+        "Zip": "6700"
+       }
+      ],
+      "Zip": ""
+     }
+    ],
+    "Zip": "7100"
+   },
+   "Id": 237101,
+   "Languages": [
+    {
+     "Code": "da",
+     "IsDefault": true,
+     "IsoCode": "da-DK"
+    }
+   ],
+   "LastUpdated": "/Date(1789987655000+0200)/",
+   "Name": "2 introduktionsstillinger i radiologi",
+   "PositionCategory": {
+    "DeepPositionCount": 1,
+    "Id": 12873,
+    "Name": "Introduktionsstilling",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "PositionCategoryMultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 12873,
+     "Name": "Introduktionsstilling",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "PositionCategoryTree": {
+    "DeepPositionCount": 2,
+    "Id": 12742,
+    "Name": "Læge",
+    "PositionCount": 1,
+    "SubItems": [
+     {
+      "DeepPositionCount": 1,
+      "Id": 12873,
+      "Name": "Introduktionsstilling",
+      "PositionCount": 1,
+      "SubItems": []
+     }
+    ]
+   },
+   "PositionCategoryTreeMultiSelection": [
+    {
+     "DeepPositionCount": 2,
+     "Id": 12742,
+     "Name": "Læge",
+     "PositionCount": 1,
+     "SubItems": [
+      {
+       "DeepPositionCount": 1,
+       "Id": 12873,
+       "Name": "Introduktionsstilling",
+       "PositionCount": 1,
+       "SubItems": []
+      }
+     ]
+    }
+   ],
+   "PositionLocation": {
+    "DeepPositionCount": 1,
+    "Id": 11062,
+    "Name": "Esbjerg",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "PositionLocationMultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 11062,
+     "Name": "Esbjerg",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "PositionLocationTree": {
+    "DeepPositionCount": 1,
+    "Id": 11062,
+    "Name": "Esbjerg",
+    "PositionCount": 1,
+    "SubItems": []
+   },
+   "PositionLocationTreeMultiSelection": [
+    {
+     "DeepPositionCount": 1,
+     "Id": 11062,
+     "Name": "Esbjerg",
+     "PositionCount": 1,
+     "SubItems": []
+    }
+   ],
+   "PositionLogo": null,
+   "PositionType": "",
+   "ProjectAdministratorId": null,
+   "ProjectLeader": "(scrubbed)",
+   "ProjectLeaderEmail": "(scrubbed)",
+   "ProjectLeaderFirstName": "(scrubbed)",
+   "ProjectLeaderId": null,
+   "ProjectLeaderLastName": "(scrubbed)",
+   "ProjectParticipants": null,
+   "ProjectType": "RecruitmentProject",
+   "Published": "/Date(1789464158000+0200)/",
+   "ShortDescription": "",
+   "ShowApplyButton": true,
+   "StartDate": "/Date(1793487600000+0100)/",
+   "StartDateASAP": false,
+   "Users": null,
+   "WorkHours": "37",
+   "WorkPlace": "",
+   "WorkPlaceCoordinates": ""
+  }
+ ],
+ "PositionCountCustomer": 267,
+ "PositionCountList": 2,
+ "PositionCountSearch": 267,
+ "PositionCountSkipped": 0
+}

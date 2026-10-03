@@ -1,0 +1,42 @@
+{
+  "name": "scout",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "mounts": [
+    "source=${localWorkspaceFolderBasename}-claude,target=/home/vscode/.claude,type=volume",
+    "source=${localWorkspaceFolderBasename}-playwright,target=/home/vscode/.cache/ms-playwright,type=volume"
+  ],
+  "workspaceFolder": "/home/vscode/project",
+  "forwardPorts": [8000],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/project,type=bind,consistency=delegated",
+  "runArgs": [
+    "--init",
+    "--shm-size=1g"
+  ],
+  "containerEnv": {
+    "POETRY_VIRTUALENVS_IN_PROJECT": "true"
+  },
+  "postCreateCommand": "./.devcontainer/postCreateCommand.sh",
+  "postAttachCommand": "./.devcontainer/postAttachCommand.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-playwright.playwright"
+      ],
+      "settings": {
+        "task.autoDetect": "off",
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "python.defaultInterpreterPath": "/home/vscode/project/.venv/bin/python",
+        "python.testing.pytestEnabled": true
+      }
+    }
+  },
+  "remoteUser": "vscode"
+}

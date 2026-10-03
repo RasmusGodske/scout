@@ -1,0 +1,82 @@
+# scout configuration. Everything a benchmark run may want to tune lives here, not in code.
+# Values marked (default) in the build brief are defaults Rasmus may change.
+
+[fetch]
+# Identify as a bot with a contact point (default). Change `contact` to whoever should be
+# emailed if a site owner objects.
+user_agent = "scout-bot/0.1 (+https://github.com/RasmusGodske/scout)"
+contact = "https://github.com/RasmusGodske/scout"
+min_interval_seconds = 1.0     # about one request per second per host (default)
+timeout_seconds = 20.0
+retries = 2                    # on 429, 5xx and connection errors, with backoff
+honour_robots = true           # (default)
+max_bytes = 5_000_000
+# A plain fetch whose visible text or link count is below these retries once in the browser.
+render_min_text_chars = 400
+render_min_links = 5
+render_wait_ms = 2500
+max_retry_after_seconds = 60
+
+[fetch.host_intervals]
+# Seconds between requests to these hosts, where one per second is too many.
+"apply.workable.com" = 4.0
+
+[jev]
+# Reached through OpenRouter, which serves TypeSafe's own /v1/systemone shape. For TypeSafe
+# directly: endpoint = "https://api.typesafe.ai/v1/systemone", model = "jev-1.13.0",
+# api_key_env = "TYPESAFE_API_KEY".
+# Pinned, never an alias such as ~typesafe/jev-latest. Thresholds are tuned against this version.
+model = "typesafe/jev-1.13-20260917"
+endpoint = "https://openrouter.ai/api/v1/systemone"
+api_key_env = "OPENROUTER_API_KEY"
+# Used only when the response carries no `usage.cost` (OpenRouter's does).
+usd_per_million_input_tokens = 0.042
+daily_spend_cap_usd = 5.0      # (default)
+usage_log = "data/jev-usage.jsonl"
+max_questions_per_request = 100
+max_choice_options = 255       # TypeSafe's documented maximum per Choice
+
+[discovery]
+# Careers words in English and Danish at least. Matched against link text and URL.
+careers_words = [
+  "career", "careers", "jobs", "job", "join us", "join-us", "work with us", "work-with-us",
+  "vacancies", "open positions", "openings", "we're hiring", "hiring",
+  "karriere", "ledige stillinger", "ledige-stillinger", "stillinger", "arbejd hos os",
+  "arbejd-hos-os", "job hos", "bliv en del af",
+]
+common_paths = [
+  "/careers", "/jobs", "/karriere", "/job", "/join-us", "/ledige-stillinger",
+  "/da/karriere", "/da/job", "/da/jobs", "/da/ledige-stillinger",
+  "/en/careers", "/en/jobs", "/en/join-us",
+]
+# Probability above which Jev's "is this a link to a single job ad" counts as yes.
+job_link_threshold = 0.6
+# Below this, Jev's careers-page choice is treated as "none".
+careers_choice_min_probability = 0.35
+max_job_links_per_page = 500
+# A cached route older than this is re-checked against the homepage on the next scrape.
+route_max_age_days = 30
+
+[boards]
+# Systems tried by slug guess, in order. An adapter must exist for each.
+guess_systems = ["greenhouse", "lever", "ashby", "workable", "recruitee", "teamtailor", "hrmanager", "emply", "join", "hibob"]
+# Suffixes appended to the domain stem to make extra slug guesses. Every suffix costs one
+# request per system per domain, so keep the list short; the benchmark says which pay off.
+slug_suffixes = ["aps"]
+# A slug-guessed board whose feed names the company's website must name this domain, and
+# one that names only the company must match the domain stem; this keeps acme.dk from
+# claiming another Acme's Greenhouse board.
+require_name_match = true
+
+[batch]
+# Domains resolved in parallel. Each worker that meets a JavaScript-only page starts its own
+# headless Chromium, so memory grows with this number.
+workers = 8
+
+[api]
+# Scrapes and lookups served at once; more wait their turn. Each may run a headless browser.
+max_concurrent_requests = 8
+
+[routes]
+# The route cache: how to reach each company's jobs. Job listings are not stored.
+path = "data/routes.sqlite"

@@ -1,0 +1,16 @@
+# Run scout locally:  docker compose up --build
+# Put OPENROUTER_API_KEY (and SCOUT_API_TOKEN, unless the API should be open) in .env.
+services:
+  scout:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in .env}
+      SCOUT_API_TOKEN: ${SCOUT_API_TOKEN:-}
+    volumes:
+      - scout-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  scout-data:
