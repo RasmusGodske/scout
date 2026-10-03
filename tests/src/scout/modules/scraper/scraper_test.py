@@ -135,3 +135,45 @@ def test_a_budget_stops_the_scrape_but_keeps_what_was_paid_for(tmp_path: Path) -
     tiny = s.scrape("c.dk", budget=Budget(max_http_requests=0))
     assert tiny.status is Status.FAILED and tiny.problem is Problem.BUDGET_EXCEEDED
     assert tiny.usage.http.requests == 0
+
+
+def test_every_request_is_journaled_with_its_decisions(tmp_path: Path) -> None:
+    from scout.modules.journal import Journal, JournalConfig
+
+    web = FakeWeb()
+    site(web, "a.dk")
+    web.html("https://none.dk/", FILLER)
+    fetcher = Fetcher(
+        FetchPolicy(user_agent="t", min_interval_seconds=0, retries=0), transport=web.transport()
+    )
+    boards = Boards(fetcher, BoardsConfig(guess_systems=["greenhouse"], slug_suffixes=[]))
+    jev = Jev(JevConfig(model="typesafe/jev-1.13-20260917", usage_log=str(tmp_path / "u.jsonl")), None)
+    config = DiscoveryConfig(careers_words=["karriere", "jobs"], common_paths=["/karriere"])
+    journal = Journal(JournalConfig(dir=str(tmp_path / "journal")))
+    s = Scraper(Resolver(fetcher, boards, jev, config), fetcher, RouteCache(":memory:"), journal=journal)
+
+    found = s.scrape("a.dk")
+    missed = s.scrape("none.dk")
+    s.lookup_job("a.dk", "https://a.dk/karriere/kok-1")
+    entries = list(journal.entries())
+    assert [(e["op"], e["domain"]) for e in entries] == [
+        ("scrape", "a.dk"),
+        ("scrape", "none.dk"),
+        ("lookup", "a.dk"),
+    ]
+    first = entries[0]
+    assert first["request_id"] == found.request_id and first["usage"]["http"]["requests"] > 0
+    assert first["jobs"] == [
+        {
+            "id": "https://a.dk/karriere/kok-1",
+            "url": "https://a.dk/karriere/kok-1",
+            "title": "Kok",
+            "known": False,
+        }
+    ]
+    assert "content" not in str(first["jobs"])  # titles and URLs only
+    kinds = {e["kind"] for e in first["trace"]}
+    assert {"slug_guess", "homepage", "careers_page", "foreign_hosts"} <= kinds
+    assert entries[1]["problem"] == "no_careers_page" and entries[1]["snapshots"] == ["homepage"]
+    assert journal.snapshot_names(missed.request_id) == ["homepage"]
+    assert entries[2]["listing_status"] == "listed"

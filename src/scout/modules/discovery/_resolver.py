@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from scout.modules.boards import BoardError, Boards, Listing, detect_boards
 from scout.modules.fetch import Blocked, Fetcher, FetchError, Response, Unreachable
 from scout.modules.jev import Jev, JevError, JevUnavailable
+from scout.modules.journal import keep_page, note
 from scout.modules.metering import BudgetExceeded
 from scout.modules.pages import (
     Link,
@@ -17,6 +18,7 @@ from scout.modules.pages import (
     collect_links,
     details_from_page,
     extract_text,
+    foreign_hosts,
     job_link_candidates,
     job_link_heuristic,
     page_title,
@@ -176,7 +178,9 @@ class Resolver:
             # system usually changes its homepage link, while the old board may live on.
             homepage = self._homepage(domain)
             if not isinstance(homepage, _NoHomepage):
-                if not _homepage_leads_to(homepage, prev):
+                leads = _homepage_leads_to(homepage, prev)
+                note("stale_check", homepage_leads_to_route=leads)
+                if not leads:
                     return self._rediscover(domain, known, prev, RediscoveryReason.ROUTE_STALE, homepage)
                 verified = True
         result = self._follow_route(domain, prev, known)
@@ -211,6 +215,7 @@ class Resolver:
         homepage: Response | None = None,
     ) -> ScrapeResult:
         log.info("rediscovering %s: %s", domain, because.value)
+        note("rediscover", because=because.value, previous=_route_summary(prev))
         # A stale board the homepage no longer leads to must not win back by slug guess: it
         # may be the abandoned one. It still counts if the site's own links lead to it.
         distrust = prev.board if because is RediscoveryReason.ROUTE_STALE else None
@@ -249,6 +254,14 @@ class Resolver:
                 return self._board_result(domain, listing, FoundBy.SLUG_GUESS, known)
             raise homepage
         linked = detect_boards(homepage.text, homepage.final_url)
+        note(
+            "homepage",
+            url=homepage.final_url,
+            rendered=homepage.rendered,
+            boards_linked=[f"{r.system}/{r.slug}" for r in linked[:5]],
+            guessed=f"{listing.ref.system}/{listing.ref.slug}" if listing else None,
+        )
+        keep_page("homepage", homepage.text)
         if listing is not None and listing.ref in linked:
             return self._board_result(domain, listing, FoundBy.SLUG_GUESS, known)
         linked_listing = self._first_readable(linked)
@@ -284,6 +297,8 @@ class Resolver:
     ) -> ScrapeResult:
         careers_url = response.final_url
         redirected = not same_site(response.url, response.final_url)
+        keep_page("careers_page" if hop == 0 else "job_list_page", response.text)
+        note("foreign_hosts", page=careers_url, hosts=foreign_hosts(response.text, careers_url)[:30])
         listing = self._board_behind(response)
         if listing is not None:
             how = FoundBy.REDIRECT if redirected and _is_board_url(response.final_url) else found_by
@@ -293,6 +308,17 @@ class Resolver:
         candidates = job_link_candidates(links, careers_url, self._config.max_job_links_per_page)
         verdicts = self._judge_job_links(candidates, response, known)
         job_links = [l for l in candidates if verdicts.get(l.url, 0.0) >= self._config.job_link_threshold]
+        scores = [verdicts.get(l.url, 0.0) for l in candidates]
+        note(
+            "careers_page",
+            url=careers_url,
+            hop=hop,
+            rendered=response.rendered,
+            links=len(links),
+            candidates=len(candidates),
+            yes=len(job_links),
+            borderline=sum(1 for p in scores if 0.3 <= p < self._config.job_link_threshold),
+        )
 
         if not job_links and not response.rendered:
             # The page had enough navigation not to look empty, but its job list may be
@@ -353,6 +379,7 @@ class Resolver:
                 listing = self._boards.fetch(ref)
             except BoardError as exc:
                 log.info("detected %s/%s but could not read it: %s", ref.system, ref.slug, exc)
+                note("board_unreadable", board=f"{ref.system}/{ref.slug}", error=str(exc)[:200])
                 continue
             if listing is not None:
                 return listing
@@ -416,10 +443,14 @@ class Resolver:
         parts = urlsplit(homepage.final_url)
         base = f"{parts.scheme}://{parts.netloc}"
         home_key = _key(homepage.final_url)
+        tried = []
         for path in self._config.common_paths:
             response = self._try_page(base + path)
             if response is not None and _key(response.final_url) != home_key:
+                note("common_paths", tried=tried, found=path)
                 return response
+            tried.append(path)
+        note("common_paths", tried=tried, found=None)
         return None
 
     def _job(self, link: Link, known: Known) -> Job | None:
@@ -445,11 +476,18 @@ class Resolver:
         links = collect_links(homepage.text, homepage.final_url)
         candidates = careers_candidates(links, self._config.careers_words)
         if len(candidates) == 1:
+            note(
+                "careers_link",
+                method="single_keyword",
+                chosen=candidates[0].url,
+                text=candidates[0].text[:80],
+            )
             return candidates[0].url
         pool = candidates or [
             l for l in links if same_site(l.url, homepage.final_url) or _is_board_url(l.url)
         ]
         if not pool:
+            note("careers_link", method="no_links", chosen=None)
             return None
         chosen = self._choose_link(
             domain,
@@ -499,12 +537,17 @@ class Resolver:
             )
         except (JevUnavailable, JevError) as exc:
             log.info("jev unavailable for %s (%s); using the best keyword match", purpose, exc)
-            return pool[0].url if pool and _has_careers_word(pool[0], self._config.careers_words) else None
-        if answer.choice == "none":
-            return None
-        if answer.probabilities.get(answer.choice, 0.0) < self._config.careers_choice_min_probability:
-            return None
-        return pool[int(answer.choice.removeprefix("link_"))].url
+            fallback = (
+                pool[0].url if pool and _has_careers_word(pool[0], self._config.careers_words) else None
+            )
+            note(purpose, method="keyword_fallback", options=len(pool), chosen=fallback)
+            return fallback
+        probability = answer.probabilities.get(answer.choice, 0.0)
+        chosen = None
+        if answer.choice != "none" and probability >= self._config.careers_choice_min_probability:
+            chosen = pool[int(answer.choice.removeprefix("link_"))].url
+        note(purpose, method="jev", options=len(pool), chosen=chosen, probability=round(probability, 3))
+        return chosen
 
     def _judge_job_links(self, links: list[Link], page: Response, known: Known) -> dict[str, float]:
         verdicts = {l.url: known.link_verdicts[l.url] for l in links if l.url in known.link_verdicts}
@@ -556,6 +599,12 @@ def _page_job(job_id: str, response: Response, link_text: str) -> Job:
         details=details,
         details_sources=sources,
     )
+
+
+def _route_summary(route: ScrapeResult) -> str:
+    if route.board is not None:
+        return f"board {route.board.system}/{route.board.slug}"
+    return f"{route.status.value} {route.careers_url}"
 
 
 def _same_board(a: BoardRef | None, b: BoardRef | None) -> bool:

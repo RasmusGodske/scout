@@ -5,12 +5,14 @@ import logging
 import uuid
 from collections.abc import Callable, Iterable
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from scout.modules.discovery import Known, Resolver, normalize_domain
 from scout.modules.fetch import Fetcher
+from scout.modules.journal import Journal, Trace, tracing
 from scout.modules.metering import Budget, metered
 from scout.modules.results import JobLookup, ListingStatus, ScrapeResult, Status, Usage
 from scout.modules.routes import RouteCache
@@ -45,10 +47,12 @@ class Scraper:
         *,
         route_max_age_days: float = 30,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        journal: Journal | None = None,
     ) -> None:
         self._resolver = resolver
         self._fetcher = fetcher
         self._routes = routes
+        self._journal = journal
         self._max_age = timedelta(days=route_max_age_days)
         self._clock = clock
 
@@ -63,21 +67,37 @@ class Scraper:
         """Every job the company lists now. Jobs in `known_job_ids` come back as references
         (`known: true`, no content), so a caller that stores jobs can skip refetching them."""
         request_id = new_request_id()
-        with metered(budget) as meter:
-            result = self._scrape(normalize_domain(domain), known_job_ids, fresh)
+        known_ids = frozenset(known_job_ids)
+        with metered(budget) as meter, tracing() as trace:
+            result = self._scrape(normalize_domain(domain), known_ids, fresh)
         result = replace(result, request_id=request_id, usage=meter.usage())
         _log_usage(request_id, "scrape", result.domain, result.usage)
+        self._write_journal(_scrape_entry(result, fresh, len(known_ids), budget), trace)
         return result
 
     def lookup_job(self, domain: str, job_id: str, *, budget: Budget | None = None) -> JobLookup:
         """One job's current content from the company's domain and the job's id alone. A
         company without a cached route is scraped first to find one (within the same budget)."""
         request_id = new_request_id()
-        with metered(budget) as meter:
+        with metered(budget) as meter, tracing() as trace:
             lookup = self._lookup(normalize_domain(domain), job_id)
         lookup = replace(lookup, request_id=request_id, usage=meter.usage())
         _log_usage(request_id, "lookup", lookup.domain, lookup.usage)
+        self._write_journal(_lookup_entry(lookup), trace)
         return lookup
+
+    def _write_journal(self, entry: dict[str, Any], trace: Trace) -> None:
+        """One journal line per request; for a miss, the pages it looked at as snapshots.
+        Journaling never fails a request: a full disk loses the entry, not the answer."""
+        if self._journal is None:
+            return
+        try:
+            if entry.get("problem") in _MISSES and trace.pages:
+                entry["snapshots"] = self._journal.snapshot(entry["request_id"], trace.pages)
+            entry["trace"] = trace.events
+            self._journal.record(entry)
+        except OSError as exc:
+            log.warning("could not write the journal: %s", exc)
 
     def _scrape(self, domain: str, known_job_ids: Iterable[str], fresh: bool) -> ScrapeResult:
         result = self._resolver.resolve(domain, self._known(domain, known_job_ids), fresh=fresh)
@@ -173,6 +193,46 @@ def read_domains(path: str | Path, column: str = "domain") -> list[str]:
         values = lines
     out = [normalize_domain(v) for v in values if v and v.strip()]
     return list(dict.fromkeys(d for d in out if "." in d))
+
+
+_MISSES = {"no_careers_page", "no_jobs_found", "job_list_unreadable"}
+
+
+def _scrape_entry(result: ScrapeResult, fresh: bool, known: int, budget: Budget | None) -> dict[str, Any]:
+    """What the journal keeps about a scrape: the outcome and route, usage, and each job's id,
+    URL and title. Never the jobs' content: it is large, already returned, and may name people."""
+    return {
+        "request_id": result.request_id,
+        "op": "scrape",
+        "domain": result.domain,
+        "status": result.status.value,
+        "problem": result.problem.value if result.problem else None,
+        "reason": result.reason,
+        "route_source": result.route_source.value,
+        "rediscovered_because": result.rediscovered_because.value if result.rediscovered_because else None,
+        "found_by": result.found_by.value if result.found_by else None,
+        "board": asdict(result.board) if result.board else None,
+        "careers_url": result.careers_url,
+        "fresh": fresh,
+        "known_job_ids": known,
+        "budget": asdict(budget) if budget else None,
+        "usage": asdict(result.usage),
+        "jobs": [{"id": j.id, "url": j.url, "title": j.details.title, "known": j.known} for j in result.jobs],
+    }
+
+
+def _lookup_entry(lookup: JobLookup) -> dict[str, Any]:
+    return {
+        "request_id": lookup.request_id,
+        "op": "lookup",
+        "domain": lookup.domain,
+        "job_id": lookup.job_id,
+        "listing_status": lookup.listing_status.value,
+        "problem": lookup.problem.value if lookup.problem else None,
+        "reason": lookup.reason,
+        "usage": asdict(lookup.usage),
+        "title": lookup.job.details.title if lookup.job else None,
+    }
 
 
 def new_request_id() -> str:

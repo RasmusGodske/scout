@@ -77,6 +77,16 @@ workers = 8
 # Scrapes and lookups served at once; more wait their turn. Each may run a headless browser.
 max_concurrent_requests = 8
 
+[journal]
+# One line per request with its outcome and the decisions behind it, for finding what to fix
+# (`scout report`, or GET /v1/journal and /v1/journal/report on a deployed scout).
+dir = "data/journal"
+retention_days = 90
+# For misses (no careers page, no jobs found, job list unreadable), also keep the homepage and
+# careers page HTML so the miss can be reproduced. About 0.2-0.5 MB per miss.
+snapshots = true
+snapshot_retention_days = 30
+
 [routes]
 # The route cache: how to reach each company's jobs. Job listings are not stored.
 path = "data/routes.sqlite"

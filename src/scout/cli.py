@@ -1,17 +1,23 @@
-"""Command line: `scout scrape|lookup|route|batch|bench|serve`. Thin; every operation is `Scout`'s."""
+"""Command line: `scout scrape|lookup|route|batch|bench|serve|journal|report`. Thin; every operation is `Scout`'s."""
 
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import logging
 import os
 import sys
 from collections import Counter
+from collections.abc import Iterator
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+
+import httpx
 
 from scout.app import Scout
 from scout.modules.benchmark import Report, judge, read_labels
+from scout.modules.journal import summarize
 from scout.modules.metering import Budget
 from scout.modules.results import ScrapeResult
 from scout.modules.scraper import ScrapeRequest, read_domains
@@ -53,6 +59,22 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--labels", default="benchmark/labels.csv")
     p.add_argument("--checked-only", action="store_true", help="only labels Rasmus has checked")
     p.add_argument("--workers", type=int)
+
+    for name, text in (
+        ("journal", "print journal entries as JSON Lines"),
+        ("report", "summarise the journal: what to fix next"),
+    ):
+        p = sub.add_parser(name, help=text)
+        p.add_argument("--since", default="30d", help="YYYY-MM-DD or <n>d (default 30d)")
+        p.add_argument("--until", help="YYYY-MM-DD")
+        p.add_argument("--remote", help="a deployed scout's base URL, e.g. https://scout.example.com")
+        p.add_argument("--token", default=os.environ.get("SCOUT_API_TOKEN"), help="its bearer token")
+        if name == "journal":
+            p.add_argument("--domain")
+            p.add_argument("--problem")
+            p.add_argument("--limit", type=int)
+        else:
+            p.add_argument("--json", action="store_true", help="print the raw summary as JSON")
 
     p = sub.add_parser("serve", help="run the HTTP API (SCOUT_API_TOKEN set = bearer token required)")
     p.add_argument("--host", default=os.environ.get("SCOUT_HOST", "127.0.0.1"))
@@ -181,6 +203,87 @@ def _bench(scout: Scout, args: argparse.Namespace) -> int:
     return 0
 
 
+def _journal(scout: Scout, args: argparse.Namespace) -> int:
+    for entry in _entries(scout, args, domain=args.domain, problem=args.problem, limit=args.limit):
+        print(json.dumps(entry, ensure_ascii=False))
+    return 0
+
+
+def _report(scout: Scout, args: argparse.Namespace) -> int:
+    if args.remote:
+        summary = _remote(args, "/v1/journal/report", {"since": args.since, "until": args.until}).json()
+    else:
+        summary = summarize(_entries(scout, args))
+    if args.json:
+        _print(summary)
+        return 0
+    _print_report(summary)
+    return 0
+
+
+def _entries(scout: Scout, args: argparse.Namespace, **filters: object) -> Iterator[dict]:
+    if args.remote:
+        params = {"since": args.since, "until": args.until, **filters}
+        response = _remote(args, "/v1/journal", params)
+        for line in response.text.splitlines():
+            if line.strip():
+                yield json.loads(line)
+        return
+    limit = filters.pop("limit", None)
+    entries = scout.journal.entries(_day(args.since), _day(args.until), **filters)  # type: ignore[arg-type]
+    yield from itertools.islice(entries, limit) if limit else entries
+
+
+def _remote(args: argparse.Namespace, path: str, params: dict) -> httpx.Response:
+    headers = {"Authorization": f"Bearer {args.token}"} if args.token else {}
+    response = httpx.get(
+        args.remote.rstrip("/") + path,
+        params={k: v for k, v in params.items() if v is not None},
+        headers=headers,
+        timeout=120,
+    )
+    response.raise_for_status()
+    return response
+
+
+def _day(value: str | None) -> date | None:
+    if not value:
+        return None
+    if value.endswith("d") and value[:-1].isdigit():
+        return datetime.now(UTC).date() - timedelta(days=int(value[:-1]))
+    return date.fromisoformat(value)
+
+
+def _print_report(r: dict) -> None:
+    req, use = r["requests"], r["usage"]
+    print(f"{req['companies']} companies, {req['scrapes']} scrapes, {req['lookups']} lookups")
+    print(f"  with jobs: {r['companies_with_jobs']}   status: {r['status']}")
+    print(f"  problems: {r['problems']}")
+    print(f"  boards: {r['boards']}   found by: {r['found_by']}")
+    print(f"  routes: {r['route_source']}   rediscovered: {r['rediscovered_because']}")
+    print(
+        f"  usage: Jev ${use['jev_usd']:.4f}, {use['http_requests']} HTTP requests, "
+        f"{use['rendered_pages']} rendered, {use['seconds']:.0f} s summed over scrapes (they run in parallel)"
+    )
+    print(f"  careers link chosen by: {r['careers_link_chosen_by']}")
+    print("\nSlug guessing (outcome counts per system):")
+    for system, outcomes in r["slug_guess"].items():
+        print(f"  {system:12} {outcomes}")
+    print("\nUnknown hosts on careers pages (adapter candidates):")
+    for h in r["unknown_hosts"]:
+        print(f"  {h['companies']:4}  {h['host']:40} e.g. {', '.join(h['examples'][:3])}")
+    print("\nSuspicious results:")
+    for s in r["suspicious_results"]:
+        print(f"  {s['domain']:28} {'; '.join(s['flags'])}  ({s['request_id']})")
+    print("\nMisses (snapshots via the request id):")
+    for m in r["misses"]:
+        print(f"  {m['domain']:28} {m['problem']:20} {m['request_id']}  {(m['careers_url'] or '')[:60]}")
+    if r["errors"]:
+        print("\nErrors:")
+        for reason, n in r["errors"].items():
+            print(f"  {n:4}  {reason}")
+
+
 def _serve(scout: Scout, args: argparse.Namespace) -> int:
     import uvicorn
 
@@ -202,6 +305,8 @@ COMMANDS = {
     "batch": _batch,
     "bench": _bench,
     "serve": _serve,
+    "journal": _journal,
+    "report": _report,
 }
 
 if __name__ == "__main__":

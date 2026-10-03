@@ -10,6 +10,7 @@ from scout.modules.boards._adapters import ADAPTERS, public_url
 from scout.modules.boards._framework import BoardError, Listing
 from scout.modules.boards._slugs import name_matches, slug_candidates
 from scout.modules.fetch import Blocked, Fetcher, FetchError
+from scout.modules.journal import note
 from scout.modules.pages import same_site
 from scout.modules.results import BoardRef, Job
 
@@ -97,12 +98,34 @@ class Boards:
                     listing = adapter.fetch(self._fetcher, BoardRef(system, slug))
                 except (BoardError, FetchError, ValueError, KeyError, TypeError) as exc:
                     log.debug("guess %s/%s: %s", system, slug, exc)
+                    note("slug_guess", system=system, slug=slug, outcome="error", error=str(exc)[:200])
                     continue
                 if listing is None or not listing.jobs:
+                    note(
+                        "slug_guess",
+                        system=system,
+                        slug=slug,
+                        outcome="missing" if listing is None else "empty",
+                    )
                     continue
                 if self._config.require_name_match and not _belongs(domain, listing):
                     log.info("guess %s/%s rejected: board is %r", system, slug, listing.company_name)
+                    note(
+                        "slug_guess",
+                        system=system,
+                        slug=slug,
+                        outcome="other_company",
+                        board_names=listing.company_name or listing.company_site,
+                    )
                     continue
+                note(
+                    "slug_guess",
+                    system=system,
+                    slug=slug,
+                    outcome="hit",
+                    jobs=len(listing.jobs),
+                    names_company=listing.identifies_company,
+                )
                 return listing
             return None
 

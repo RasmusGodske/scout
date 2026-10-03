@@ -159,6 +159,24 @@ def canonical_url(url: str) -> str:
     return urlunsplit((parts.scheme.lower(), parts.netloc.lower(), path, urlencode(query), ""))
 
 
+def foreign_hosts(html: str, page_url: str) -> list[str]:
+    """Hosts on other sites that the page links to (a), embeds (iframe) or loads scripts from,
+    most frequent first. Where a careers page hands off to a hiring system shows up here."""
+    try:
+        doc = lxml_html.fromstring(html)
+    except (ValueError, lxml_html.etree.ParserError):
+        return []
+    site = _site(urlsplit(page_url).netloc)
+    counts: dict[str, int] = {}
+    for value in doc.xpath("//a/@href | //iframe/@src | //script/@src"):
+        url = urljoin(page_url, str(value).strip())
+        parts = urlsplit(url)
+        host = parts.netloc.lower().split(":")[0]
+        if parts.scheme in ("http", "https") and host and _site(host) != site:
+            counts[host] = counts.get(host, 0) + 1
+    return [h for h, _ in sorted(counts.items(), key=lambda kv: -kv[1])]
+
+
 def same_site(a: str, b: str) -> bool:
     return _site(urlsplit(a).netloc) == _site(urlsplit(b).netloc)
 

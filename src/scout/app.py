@@ -15,6 +15,7 @@ from scout.modules.boards import Boards, BoardsConfig
 from scout.modules.discovery import DiscoveryConfig, Resolver, normalize_domain
 from scout.modules.fetch import Fetcher, FetchPolicy
 from scout.modules.jev import Jev, JevConfig
+from scout.modules.journal import Journal, JournalConfig
 from scout.modules.metering import Budget
 from scout.modules.results import JobLookup, ScrapeResult
 from scout.modules.routes import CachedRoute, RouteCache
@@ -41,11 +42,13 @@ class Scout:
         discovery = settings["discovery"]
         self.resolver = Resolver(self.fetcher, self.boards, self.jev, DiscoveryConfig.from_config(discovery))
         self.routes = RouteCache(routes_path or settings["routes"]["path"])
+        self.journal = Journal(JournalConfig.from_config(settings.get("journal", {})))
         self.scraper = Scraper(
             self.resolver,
             self.fetcher,
             self.routes,
             route_max_age_days=float(discovery.get("route_max_age_days", 30)),
+            journal=self.journal,
         )
 
     @classmethod

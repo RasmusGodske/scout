@@ -136,6 +136,28 @@ rediscovered`):
 homepage link is the careers page, and which links are single job ads. About $0.0002 per
 company on a first scrape; much less after.
 
+## The journal: finding what to fix
+
+Every scrape and lookup writes one line to a daily journal (`data/journal/YYYY-MM-DD.jsonl`):
+the outcome, the route, usage, each job's id, URL and title (never its content), and the
+decisions behind it: which slug guesses missed, how the careers link was chosen (keyword or Jev,
+with Jev's probability), which paths were tried, how many links Jev judged as job ads, which
+off-site hosts the careers page uses. For misses (`no_careers_page`, `no_jobs_found`,
+`job_list_unreadable`) the homepage and careers page HTML are saved too, so the miss can be
+reproduced. Entries are kept 90 days, snapshots 30.
+
+```
+poetry run scout report --since 30d                                        # this machine
+poetry run scout report --remote https://scout.example.com --token $TOKEN  # a deployed scout
+```
+
+The report ranks the gaps: hiring systems with no adapter yet (off-site hosts by how many
+companies use them), misses with their request ids, suspicious results ("job not found" or
+repeated titles), slug-guess outcomes per system, problem counts, the slowest scrapes and
+errors. The same is served as `GET /v1/journal/report`; the raw entries as `GET /v1/journal`
+(JSON Lines, filter by `since`, `until`, `domain`, `problem`, `op`, `limit`) and a miss's pages
+as `GET /v1/journal/snapshots/{request_id}/{name}`. All behind the bearer token.
+
 ## Hiring systems
 
 Greenhouse, Lever, Ashby, Workable, Recruitee, Teamtailor, HR Manager, Emply, JOIN and HiBob,
@@ -211,6 +233,7 @@ checks module boundaries.
 | `fetch` | all crawling HTTP: rate limits, robots.txt, retries, the headless browser |
 | `jev` | the Jev key and request shape, pinned model, usage log, daily spend cap |
 | `routes` | the SQLite route cache and Jev link verdicts; no job listings |
+| `journal` | every request's decisions and misses' pages, and the report of what to fix |
 | `benchmark` | judging results against hand-checked labels |
 | `results` | the shared vocabulary (`ScrapeResult`, `Job`, `JobLookup`, ...) |
 

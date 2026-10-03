@@ -3,6 +3,7 @@ Runs in-process with FastAPI's TestClient against a fake web."""
 
 from __future__ import annotations
 
+import json
 import tomllib
 from pathlib import Path
 
@@ -26,6 +27,7 @@ def client(config_path: Path, tmp_path: Path) -> TestClient:
     settings = tomllib.loads(config_path.read_text())
     settings["boards"]["guess_systems"] = []
     settings["jev"]["usage_log"] = str(tmp_path / "u.jsonl")
+    settings["journal"]["dir"] = str(tmp_path / "journal")
     scout = Scout(settings, api_key="", routes_path=":memory:")
     fake = Fetcher(FetchPolicy(user_agent="t", min_interval_seconds=0, retries=0), transport=web.transport())
     for holder in (scout.boards, scout.resolver, scout.scraper):
@@ -105,6 +107,7 @@ def test_without_a_token_the_api_is_open(
     monkeypatch.delenv("SCOUT_API_TOKEN", raising=False)
     settings = tomllib.loads(config_path.read_text())
     settings["jev"]["usage_log"] = str(tmp_path / "u.jsonl")
+    settings["journal"]["dir"] = str(tmp_path / "journal")
     scout = Scout(settings, api_key="", routes_path=":memory:")
     open_client = TestClient(create_app(scout))
     assert open_client.get("/v1/routes/acme.dk").status_code == 404  # reached, not 401
@@ -116,6 +119,21 @@ def test_token_comes_from_the_environment(
     monkeypatch.setenv("SCOUT_API_TOKEN", "from-env")
     settings = tomllib.loads(config_path.read_text())
     settings["jev"]["usage_log"] = str(tmp_path / "u.jsonl")
+    settings["journal"]["dir"] = str(tmp_path / "journal")
     client = TestClient(create_app(Scout(settings, api_key="", routes_path=":memory:")))
     assert client.get("/v1/routes/acme.dk").status_code == 401
     assert client.get("/v1/routes/acme.dk", headers={"Authorization": "Bearer from-env"}).status_code == 404
+
+
+def test_journal_endpoints(client: TestClient) -> None:
+    client.post("/v1/scrape", json={"domain": "acme.dk"}, headers=AUTH)
+    client.post("/v1/scrape", json={"domain": "nothing.dk"}, headers=AUTH)
+    assert client.get("/v1/journal").status_code == 401
+    lines = client.get("/v1/journal?since=1d", headers=AUTH).text.strip().splitlines()
+    assert [json.loads(l)["domain"] for l in lines][-2:] == ["acme.dk", "nothing.dk"]
+    one = client.get("/v1/journal?domain=acme.dk&limit=1", headers=AUTH).text.strip().splitlines()
+    assert len(one) == 1
+    report = client.get("/v1/journal/report", headers=AUTH).json()
+    assert report["requests"]["scrapes"] >= 2 and "unknown_hosts" in report
+    assert client.get("/v1/journal?since=yesterday", headers=AUTH).status_code == 422
+    assert client.get("/v1/journal/snapshots/req_nope/homepage", headers=AUTH).status_code == 404

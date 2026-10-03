@@ -6,6 +6,9 @@
 Every scrape and lookup answers with a `request_id` and a `usage` block (Jev calls, tokens and
 USD; HTTP requests, rendered pages and bytes; duration), for a platform on top to bill from.
     GET  /v1/routes/{domain}
+    GET  /v1/journal?since=30d&domain=&problem=&op=&limit=    JSON Lines
+    GET  /v1/journal/report?since=30d                          what to fix next
+    GET  /v1/journal/snapshots/{request_id}[/{name}]           pages saved for a miss
     GET  /healthz
 
 Set SCOUT_API_TOKEN to require `Authorization: Bearer <token>` on every /v1 call.
@@ -14,15 +17,20 @@ Set SCOUT_API_TOKEN to require `Authorization: Bearer <token>` on every /v1 call
 from __future__ import annotations
 
 import hmac
+import itertools
+import json
 import logging
 import os
 import threading
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from scout.app import Scout
+from scout.modules.journal import summarize
 from scout.modules.metering import Budget
 
 log = logging.getLogger(__name__)
@@ -108,8 +116,55 @@ def create_app(scout: Scout, token: str | None = None) -> FastAPI:
             "job_count": cached.job_count,
         }
 
+    # --- the journal: what scout did and why, for finding what to fix ---------------------
+
+    @app.get("/v1/journal", dependencies=[Depends(authorised)])
+    def journal_entries(
+        since: str | None = Query(None, description="YYYY-MM-DD, or a number of days back like 30d"),
+        until: str | None = Query(None, description="YYYY-MM-DD"),
+        domain: str | None = None,
+        problem: str | None = None,
+        op: str | None = Query(None, description="scrape or lookup"),
+        limit: int | None = Query(None, ge=1),
+    ) -> StreamingResponse:
+        """Journal entries as JSON Lines, oldest first."""
+        entries = scout.journal.entries(_day(since), _day(until), domain=domain, problem=problem, op=op)
+        if limit:
+            entries = itertools.islice(entries, limit)
+        lines = (json.dumps(e, ensure_ascii=False) + "\n" for e in entries)
+        return StreamingResponse(lines, media_type="application/x-ndjson")
+
+    @app.get("/v1/journal/report", dependencies=[Depends(authorised)])
+    def journal_report(since: str | None = "30d", until: str | None = None) -> dict[str, Any]:
+        """The gaps worth fixing: unknown hiring systems, misses, suspicious results, ..."""
+        return summarize(scout.journal.entries(_day(since), _day(until)))
+
+    @app.get("/v1/journal/snapshots/{request_id}", dependencies=[Depends(authorised)])
+    def snapshot_list(request_id: str) -> dict[str, Any]:
+        return {"request_id": request_id, "pages": scout.journal.snapshot_names(request_id)}
+
+    @app.get("/v1/journal/snapshots/{request_id}/{name}", dependencies=[Depends(authorised)])
+    def snapshot_page(request_id: str, name: str) -> PlainTextResponse:
+        """A saved page, as text (served as text/plain so a browser never runs its scripts)."""
+        html = scout.journal.snapshot_page(request_id, name)
+        if html is None:
+            raise HTTPException(status_code=404, detail="no such snapshot")
+        return PlainTextResponse(html)
+
     @app.get("/healthz")
     def health() -> dict[str, Any]:
         return {"ok": True, "jev": scout.jev.available}
 
     return app
+
+
+def _day(value: str | None) -> date | None:
+    """`YYYY-MM-DD` or `<n>d` (n days ago, UTC) -> a date; None stays None."""
+    if not value:
+        return None
+    try:
+        if value.endswith("d") and value[:-1].isdigit():
+            return datetime.now(UTC).date() - timedelta(days=int(value[:-1]))
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=f"not a date or <n>d: {value}") from exc
