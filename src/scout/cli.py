@@ -190,9 +190,15 @@ def _bench(scout: Scout, args: argparse.Namespace) -> int:
     ):
         if not chosen:
             continue
-        report = Report([judge(l, results[l.domain]) for l in chosen if l.domain in results])
+        supported = frozenset(scout.boards.systems())
+        report = Report([judge(l, results[l.domain], supported) for l in chosen if l.domain in results])
         hits = sum(v.hit for v in report.verdicts)
-        print(f"\n== {group}: {hits}/{len(report.verdicts)} hit ({report.hit_rate:.0%})")
+        print(f"\n== {group}: {hits}/{len(report.verdicts)} companies right ({report.hit_rate:.0%})")
+        precision, recall = report.job_precision(), report.job_recall()
+        if precision is not None or recall is not None:
+            p = f"{precision:.0%}" if precision is not None else "-"
+            r = f"{recall:.0%}" if recall is not None else "-"
+            print(f"   jobs: precision {p} (reported jobs that are real), recall {r} (real jobs found)")
         for found_by, (h, t) in report.by_found_by().items():
             print(f"   found_by {found_by:14} {h}/{t}")
         for reason, n in report.miss_reasons().most_common():

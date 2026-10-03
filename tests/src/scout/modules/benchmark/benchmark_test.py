@@ -33,9 +33,10 @@ def test_board_hit_and_misses() -> None:
         found_by=FoundBy.SLUG_GUESS,
         jobs=jobs(10),
     )
-    assert judge(label(system="teamtailor", slug="acme", open_jobs=11), result).hit
-    assert not judge(label(system="emply"), result).hit
-    assert not judge(label(system="teamtailor", open_jobs=30), result).hit  # far off the count
+    supported = frozenset({"teamtailor", "emply"})
+    assert judge(label(system="teamtailor", slug="acme", open_jobs=11), result, supported).hit
+    assert not judge(label(system="emply"), result, supported).hit
+    assert not judge(label(system="teamtailor", open_jobs=30), result, supported).hit  # far off the count
 
 
 def test_custom_page_language_variants_are_the_same_page() -> None:
@@ -83,3 +84,45 @@ def test_a_careers_page_and_its_parent_on_the_same_host_match() -> None:
     assert judge(label(careers_url="https://careers.s.com/open-positions/"), result).hit
     other_host = ScrapeResult("s.com", Status.PAGE, careers_url="https://s.com/", jobs=jobs(1))
     assert not judge(label(careers_url="https://careers.s.com/open-positions/"), other_host).hit
+
+
+def page_jobs(*urls: str) -> tuple[Job, ...]:
+    return tuple(Job(u, u, None) for u in urls)
+
+
+def test_jobs_on_an_unsupported_hiring_system_are_judged_as_a_page() -> None:
+    result = ScrapeResult(
+        "a.de",
+        Status.PAGE,
+        careers_url="https://a.jobs.personio.de/",
+        jobs=page_jobs("https://a.jobs.personio.de/job/1"),
+    )
+    assert judge(
+        label(system="personio", careers_url="https://a.jobs.personio.de/"), result, frozenset({"teamtailor"})
+    ).hit
+
+
+def test_precision_and_recall_per_job() -> None:
+    real = ("https://a.dk/da/job/1", "https://a.dk/job/2", "https://a.dk/job/3")
+    result = ScrapeResult(
+        "a.dk",
+        Status.PAGE,
+        careers_url="https://a.dk/karriere",
+        jobs=page_jobs(
+            "https://www.a.dk/en/job/1/",
+            "https://a.dk/job/2?utm_source=x",
+            "https://a.dk/team/job-van-den-berk",
+        ),
+    )
+    v = judge(label(careers_url="https://a.dk/karriere", job_urls=real), result)
+    assert (v.true_jobs, v.false_jobs, v.missed_jobs) == (2, 1, 1)  # language prefix and tracking ignored
+    assert not v.hit and "false jobs" in v.misses[0]
+
+    closed = ScrapeResult(
+        "b.dk", Status.PAGE, careers_url="https://b.dk/careers", jobs=page_jobs("https://b.dk/job/gone")
+    )
+    w = judge(label(domain="b.dk", careers_url="https://b.dk/careers", open_jobs=0), closed)
+    assert (w.true_jobs, w.false_jobs, w.missed_jobs) == (0, 1, 0)
+
+    report = Report([v, w])
+    assert report.job_precision() == 2 / 4 and report.job_recall() == 2 / 3

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import csv
+import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from scout.modules.pages import canonical_url
 from scout.modules.results import ScrapeResult, Status
 
 NO_CAREERS = "no_careers_page"
@@ -13,8 +15,11 @@ NO_CAREERS = "no_careers_page"
 
 @dataclass(frozen=True)
 class Label:
-    """One hand-checked domain. `system` is a board system, empty for a custom page, or
-    `no_careers_page`. Only labels with `checked_by` filled in count as checked."""
+    """One hand-checked domain. `system` is a hiring system (one scout has an adapter for, or
+    another one such as `personio`), empty for a custom page on the company's own site, or
+    `no_careers_page`. `job_urls` lists every open job's URL where the labeller recorded them
+    (custom pages), which lets the benchmark measure precision and recall per job. Only labels
+    with `checked_by` filled in count as checked."""
 
     domain: str
     careers_url: str
@@ -24,6 +29,7 @@ class Label:
     labelled_by: str
     checked_by: str
     notes: str = ""
+    job_urls: tuple[str, ...] = ()
 
     @property
     def checked(self) -> bool:
@@ -38,6 +44,11 @@ class Verdict:
     misses: tuple[str, ...]
     jobs_found: int
     jobs_expected: int | None
+    # Per-job counts, when the label lists job URLs or says there are none: real jobs found,
+    # "jobs" found that are not real, and real jobs missed. None when not measurable.
+    true_jobs: int | None = None
+    false_jobs: int | None = None
+    missed_jobs: int | None = None
 
 
 @dataclass
@@ -59,6 +70,19 @@ class Report:
     def miss_reasons(self) -> Counter[str]:
         return Counter(m.split(":")[0] for v in self.verdicts for m in v.misses)
 
+    def job_precision(self) -> float | None:
+        """Of the jobs scout reported (where measurable), the share that are real."""
+        tp, fp = self._sum("true_jobs"), self._sum("false_jobs")
+        return tp / (tp + fp) if tp + fp else None
+
+    def job_recall(self) -> float | None:
+        """Of the real jobs (where listed), the share scout found."""
+        tp, fn = self._sum("true_jobs"), self._sum("missed_jobs")
+        return tp / (tp + fn) if tp + fn else None
+
+    def _sum(self, name: str) -> int:
+        return sum(getattr(v, name) or 0 for v in self.verdicts)
+
 
 def read_labels(path: str | Path) -> list[Label]:
     with open(path, encoding="utf-8") as f:
@@ -76,16 +100,19 @@ def read_labels(path: str | Path) -> list[Label]:
                 labelled_by=(r.get("labelled_by") or "").strip(),
                 checked_by=(r.get("checked_by") or "").strip(),
                 notes=(r.get("notes") or "").strip(),
+                job_urls=tuple((r.get("job_urls") or "").split()),
             )
         )
     return out
 
 
-def judge(label: Label, result: ScrapeResult) -> Verdict:
+def judge(label: Label, result: ScrapeResult, supported: frozenset[str] = frozenset()) -> Verdict:
     """Whether scout found what the label says. Pure.
 
-    A hit needs the right kind of answer (board system and slug, custom careers page, or no
-    careers page) and, when the label counts jobs, a job count within max(2, 25%) of it.
+    A hit needs the right kind of answer and, when the label counts jobs, a job count within
+    max(2, 25%) of it. The right kind: the board for a hiring system scout supports
+    (`supported`); for any other hiring system, or a custom page, the careers page itself
+    (scout reads both as a page); no careers page when there is none.
     """
     misses: list[str] = []
     found = len(result.jobs)
@@ -94,7 +121,7 @@ def judge(label: Label, result: ScrapeResult) -> Verdict:
             misses.append(f"status: expected no careers page, got {result.status.value}")
     elif result.status is Status.FAILED:
         misses.append(f"failed: {result.reason}")
-    elif label.system:
+    elif label.system in supported:
         got = result.board.system if result.board else ""
         if got != label.system:
             misses.append(f"system: expected {label.system}, got {got or result.status.value}")
@@ -102,13 +129,24 @@ def judge(label: Label, result: ScrapeResult) -> Verdict:
             misses.append(f"slug: expected {label.slug}, got {result.board.slug}")
     else:
         if result.status is not Status.PAGE:
-            misses.append(f"status: expected a custom page, got {result.status.value}")
+            misses.append(f"status: expected a careers page, got {result.status.value}")
         elif label.careers_url and not _same_page(label.careers_url, result.careers_url):
             misses.append(f"careers_url: expected {label.careers_url}, got {result.careers_url}")
     if label.system != NO_CAREERS and label.open_jobs is not None and not misses:
         tolerance = max(2, round(label.open_jobs * 0.25))
         if abs(found - label.open_jobs) > tolerance:
             misses.append(f"jobs: expected about {label.open_jobs}, got {found}")
+    true_jobs = false_jobs = missed_jobs = None
+    expected = _expected_jobs(label)
+    if expected is not None:
+        got = {_job_key(j.url) for j in result.jobs} | {_job_key(j.id) for j in result.jobs if "://" in j.id}
+        real = {_job_key(u) for u in expected}
+        found_real = {k for k in real if k in got}
+        true_jobs = len(found_real)
+        false_jobs = max(0, found - true_jobs)
+        missed_jobs = len(real) - true_jobs
+        if false_jobs and not misses:
+            misses.append(f"false jobs: {false_jobs} reported jobs are not open job ads")
     return Verdict(
         label.domain,
         not misses,
@@ -116,6 +154,32 @@ def judge(label: Label, result: ScrapeResult) -> Verdict:
         tuple(misses),
         found,
         label.open_jobs,
+        true_jobs,
+        false_jobs,
+        missed_jobs,
+    )
+
+
+def _expected_jobs(label: Label) -> tuple[str, ...] | None:
+    """The real job URLs, when the label makes them knowable: listed, or none open at all."""
+    if label.job_urls:
+        return label.job_urls
+    if label.system == NO_CAREERS or label.open_jobs == 0:
+        return ()
+    return None
+
+
+_LANG = re.compile(r"^/(da|en|de|fr|nl|sv|fi|no|nb|es|it|pl|pt|cs|dk)(?=/|$)", re.I)
+
+
+def _job_key(url: str) -> str:
+    """A job URL compared loosely: canonical, without a language prefix or `www.`."""
+    canonical = canonical_url(url)
+    parts = urlsplit(canonical)
+    return (
+        parts.netloc.removeprefix("www.")
+        + _LANG.sub("", parts.path)
+        + (f"?{parts.query}" if parts.query else "")
     )
 
 
