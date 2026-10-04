@@ -39,8 +39,8 @@ jobs:
 
       - name: Lint
         run: |
-          poetry run ruff check src tests
-          poetry run ruff format --check src tests
+          poetry run ruff check src tests benchmark
+          poetry run ruff format --check src tests benchmark
 
       # The offline suite: a guard fails any test that touches the network.
       - name: Test

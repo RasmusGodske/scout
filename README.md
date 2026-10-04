@@ -159,6 +159,22 @@ errors. The same is served as `GET /v1/journal/report`; the raw entries as `GET 
 (JSON Lines, filter by `since`, `until`, `domain`, `problem`, `op`, `limit`) and a miss's pages
 as `GET /v1/journal/snapshots/{request_id}/{name}`. All behind the bearer token.
 
+## How well it works
+
+Measured on 40 hand-labelled European companies that scout was never tuned on
+([`benchmark/`](benchmark/README.md)), 2026-10-04:
+
+| | |
+|---|---|
+| Companies right (right place, about the right number of jobs) | 88% |
+| Job precision: reported jobs that are real open ads | 92% |
+| Job recall: real open jobs found | 87% |
+| First scrape | ~16 s per company (median), 16 in parallel; ~21 requests and ~$0.0003 of Jev per company |
+| Repeat scrape on the cached route | ~5 s per company (median) |
+
+The misses are mostly hiring systems scout has no adapter for yet, and pages for roles a company
+is not currently hiring for that still look like job ads.
+
 ## Hiring systems
 
 Greenhouse, Lever, Ashby, Workable, Recruitee, Teamtailor, HR Manager, Emply, JOIN and HiBob,
@@ -212,7 +228,10 @@ Without a Jev key scout still runs, on keyword and URL heuristics, and says so.
 
 Configuration is [`scout.toml`](scout.toml): careers words, common paths, Jev model (pinned),
 thresholds and daily spend cap, route re-check age, rate limits per host, batch workers. The
-route cache and the Jev usage log live in `data/` (not committed).
+route cache, the journal and the Jev usage log live in `data/` (not committed).
+
+**Working on scout?** Read [`AGENTS.md`](AGENTS.md) first: scope, conventions, how to measure a
+change, how to add a hiring system, and the lessons already learned.
 
 ## Tests
 
