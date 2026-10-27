@@ -94,3 +94,12 @@ def test_page_title() -> None:
         page_title("<html><head><title>T</title></head><body><h1> Head  of Sales </h1></body></html>")
         == "Head of Sales"
     )
+
+
+def test_extract_text_gives_the_same_text_however_often_a_page_is_read() -> None:
+    # trafilatura's de-duplication is a cache shared by the whole process: a paragraph seen more
+    # than twice is dropped, so the fourth job of a company lost the footer every ad shares, and
+    # an unchanged ad read again came back shorter.
+    page = read("lunar_teamtailor_job.html")
+    texts = [extract_text(page) for _ in range(5)]
+    assert len(set(texts)) == 1
