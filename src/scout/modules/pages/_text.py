@@ -13,12 +13,14 @@ def extract_text(html: str) -> str:
     """The readable text of a job page or an HTML fragment from a feed.
 
     trafilatura finds the main content of a full page; a short fragment it may reject, so
-    plain text-content with block breaks is the fallback.
+    plain text-content with block breaks is the fallback. The same page always gives the same
+    text: trafilatura's de-duplication is off, because its cache is shared by the whole process
+    and would drop a paragraph (a footer every ad of a company shares) once it had seen it twice.
     """
     if not html or not html.strip():
         return ""
     text = trafilatura.extract(
-        html, include_comments=False, include_tables=True, favor_recall=True, deduplicate=True
+        html, include_comments=False, include_tables=True, favor_recall=True, deduplicate=False
     )
     if text and len(text) >= 200:
         return text.strip()
