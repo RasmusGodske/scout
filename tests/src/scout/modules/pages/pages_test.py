@@ -69,6 +69,29 @@ def test_job_link_candidates_on_a_real_careers_page() -> None:
     assert all("linkedin" not in l.url for l in candidates)
 
 
+def test_job_ads_on_hiring_systems_with_their_own_url_shapes_are_candidates() -> None:
+    # Shapes seen on production misses (company names replaced): Talentadore's /apply/<slug>/<id>,
+    # Reqruiting's job.aspx?id=<n>, a Swedish recruiter's /tjanst/<id>-<slug>. Before, off-site
+    # links in these shapes were dropped before Jev ever saw them.
+    page = "https://acme.com/open-positions/"
+    html = """<main>
+      <a href="https://ats.talentadore.com/apply/ai-engineer/DokV4P">AI Engineer</a>
+      <a href="https://AcmeAS.reqruiting.com/job.aspx?id=28792">Apply for Consultant</a>
+      <a href="https://www.recruiter.se/tjanst/3472-produktionschef-till-acme">via länken</a>
+      <a href="https://partner.example.com/products/widget">Our partner</a>
+      <a href="https://AcmeAS.reqruiting.com/Pages/Application/Login.aspx?customerId=3672">Log in</a>
+    </main>"""
+    urls = [l.url for l in job_link_candidates(collect_links(html, page), page, 500)]
+    assert urls == [
+        "https://ats.talentadore.com/apply/ai-engineer/DokV4P",
+        "https://AcmeAS.reqruiting.com/job.aspx?id=28792",
+        "https://www.recruiter.se/tjanst/3472-produktionschef-till-acme",
+    ]
+    assert all(job_link_heuristic(Link(u, ""), page) >= 0.6 for u in urls)
+    # The Swedish plural "tjänster" means services, not positions.
+    assert job_link_heuristic(Link("https://acme.se/tjanster/it-support/", "IT-support"), page) < 0.6
+
+
 def test_job_link_heuristic_tells_ads_from_navigation() -> None:
     careers = "https://acme.dk/karriere"
     assert job_link_heuristic(Link("https://acme.dk/karriere/salgschef-123", "Salgschef"), careers) >= 0.6

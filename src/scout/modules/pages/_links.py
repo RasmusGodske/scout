@@ -217,15 +217,28 @@ def same_site(a: str, b: str) -> bool:
     return _site(urlsplit(a).netloc) == _site(urlsplit(b).netloc)
 
 
+# A path segment naming a job (`/job/<slug>`, `/apply/<slug>/<id>` on Talentadore, `/tjanst/<id>`
+# on a Swedish recruiter's site), followed by the job's own segment. Not `tjanster`: the plural
+# is Swedish for services (`/tjanster/it-support`), as French `offres` are mostly offers.
 _JOB_URL = re.compile(
-    r"/(job|jobs|stilling|stillinger|position|positions|vacancy|vacancies|opening|openings|"
-    r"careers?|karriere|ad|o|j)/[^/?#]{3,}",
+    r"/(job|jobs|jobb|stilling|stillinger|position|positions|vacancy|vacancies|vacature|vacatures|"
+    r"opening|openings|posting|postings|requisition|requisitions|apply|tjanst|stelle|stellen|"
+    r"stellenangebot|emploi|careers?|karriere|ad|o|j)/[^/?#]{3,}",
     re.I,
 )
+# A script page for one job, picked by an id in the query: `job.aspx?id=29907` (Reqruiting),
+# `vacancy.php?id=12`, `ShowJob.aspx?jobId=7`.
+_JOB_SCRIPT = re.compile(
+    r"/[\w-]*(job|vacanc|position|stilling|posting)[\w-]*\.(aspx?|php|html?|jsp|cfm)$", re.I
+)
+_ID_QUERY = re.compile(r"(^|&)[\w-]*id=[\w-]+", re.I)
 
 
 def _looks_like_job_url(url: str) -> bool:
-    path = urlsplit(url).path
+    parts = urlsplit(url)
+    path = parts.path
+    if _JOB_SCRIPT.search(path) and _ID_QUERY.search(parts.query):
+        return True
     return bool(_JOB_URL.search(path)) and not path.rstrip("/").lower().endswith(
         ("/jobs", "/careers", "/karriere", "/stillinger")
     )

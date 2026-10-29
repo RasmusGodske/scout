@@ -4,7 +4,8 @@ Pure functions over HTML and URLs, no I/O. It hides the messy parts of reading a
 careers page: resolving relative links, `<base>`, fragments, mail/phone/script links, files,
 social links and language variants (`/da/karriere` and `/en/careers` are one candidate);
 scoring links by careers words in their text or URL; narrowing a careers page's links to those
-that could be a single job ad; turning a job page or feed fragment into readable text
+that could be a single job ad (links to other sites only in a job's URL shape: `/job/<slug>`,
+`/apply/<slug>/<id>`, `/tjanst/<id>`, `job.aspx?id=<n>`, ...); turning a job page or feed fragment into readable text
 (trafilatura, with a plain-text fallback for fragments it rejects); and reading the details a
 job page states plainly.
 
