@@ -52,6 +52,19 @@ def test_careers_word_must_be_a_word() -> None:
     assert careers_candidates([Link("https://acme.dk/x", "Ledige stillinger")], WORDS)
 
 
+def test_careers_words_match_url_slugs_written_without_accents() -> None:
+    words = ["karriär", "työpaikat", "carrières"]
+    for url in (
+        "https://acme.se/karriar/",
+        "https://acme.fi/tyopaikat",
+        "https://acme.fr/carrieres",
+        "https://acme.se/karri%C3%A4r",
+    ):
+        assert careers_candidates([Link(url, "")], words), url
+    # Only accents are dropped: a different word stays different.
+    assert careers_candidates([Link("https://acme.se/karta", "")], words) == []
+
+
 def test_real_homepage_points_at_the_emply_site() -> None:
     links = collect_links(read("molslinjen_homepage.html"), "https://www.molslinjen.dk/")
     urls = [l.url for l in careers_candidates(links, WORDS)]

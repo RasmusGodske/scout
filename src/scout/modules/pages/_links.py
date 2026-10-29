@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
-from urllib.parse import parse_qsl, urldefrag, urlencode, urljoin, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, unquote, urldefrag, urlencode, urljoin, urlsplit, urlunsplit
 
 from lxml import html as lxml_html
 
@@ -103,16 +104,21 @@ def careers_candidates(links: list[Link], careers_words: list[str]) -> list[Link
 
 
 def careers_score(link: Link, careers_words: list[str]) -> int:
-    """2 per careers word in the link text, 1 per careers word in the URL path or host."""
+    """2 per careers word in the link text, 1 per careers word in the URL path or host.
+
+    In the URL a word also matches without its accents, as slugs are written: "karriär" is
+    `/karriar`, "työpaikat" `/tyopaikat`, "carrières" `/carrieres`.
+    """
     text = link.text.lower()
     parts = urlsplit(link.url)
-    where = (parts.netloc + parts.path).lower()
+    where = unquote(parts.netloc + parts.path).lower()
     score = 0
     for word in careers_words:
         w = word.lower()
         if _word_in(w, text):
             score += 2
-        if _word_in(w.replace(" ", "-"), where):
+        slug = w.replace(" ", "-")
+        if _word_in(slug, where) or _word_in(_unaccented(slug), where):
             score += 1
     return score
 
@@ -242,6 +248,11 @@ def _looks_like_job_url(url: str) -> bool:
     return bool(_JOB_URL.search(path)) and not path.rstrip("/").lower().endswith(
         ("/jobs", "/careers", "/karriere", "/stillinger")
     )
+
+
+def _unaccented(word: str) -> str:
+    """Accents dropped (ä -> a, é -> e); letters that are not accented ones (ø, æ) stay."""
+    return "".join(c for c in unicodedata.normalize("NFKD", word) if not unicodedata.combining(c))
 
 
 def _word_in(word: str, haystack: str) -> bool:
