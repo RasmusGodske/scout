@@ -24,6 +24,8 @@ class Problem(StrEnum):
     NO_CAREERS_PAGE = "no_careers_page"  # no careers page found on the site
     NO_JOBS_FOUND = "no_jobs_found"  # a careers page, but no job ads recognised on it
     JOB_LIST_UNREADABLE = "job_list_unreadable"  # the page links to a job list we cannot read
+    # the careers page sends people to a job site scout does not read (LinkedIn); see job_list_url
+    JOBS_ON_UNSUPPORTED_SITE = "jobs_on_unsupported_site"
     BUDGET_EXCEEDED = "budget_exceeded"  # the request's budget ran out; jobs may be partial
     ERROR = "error"  # anything else; see `reason`
 
@@ -176,6 +178,9 @@ class ScrapeResult:
     # also on a page with zero jobs, since scout cannot tell that apart from a miss.
     problem: Problem | None = None
     reason: str = ""
+    # Where the company's job list is, when scout found it but could not read it
+    # (`job_list_unreadable`, `jobs_on_unsupported_site`).
+    job_list_url: str = ""
     # Jev's (or the fallback's) probability that each judged link on the careers page is a
     # single job ad, cached with the route so a rerun only asks about new links. Not output.
     link_verdicts: tuple[tuple[str, float], ...] = field(default_factory=tuple)

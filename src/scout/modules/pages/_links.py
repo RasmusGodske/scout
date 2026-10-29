@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from fnmatch import fnmatchcase
 from urllib.parse import parse_qsl, urldefrag, urlencode, urljoin, urlsplit, urlunsplit
 
 from lxml import html as lxml_html
@@ -56,6 +57,25 @@ def collect_links(html: str, base_url: str) -> list[Link]:
         if len(text) > len(seen.get(url, "")) or url not in seen:
             seen[url] = text[:200]
     return [Link(u, t) for u, t in seen.items()]
+
+
+def unsupported_job_site_links(links: list[Link], sites: list[str]) -> list[Link]:
+    """Links to a job list on a site scout does not read, in page order.
+
+    Each of `sites` is a host and a path pattern, `linkedin.com/company/*/jobs*`: the host
+    matches itself and its subdomains (`dk.linkedin.com`), `*` in the path matches anything.
+    """
+    found: list[Link] = []
+    for link in links:
+        parts = urlsplit(link.url)
+        host = parts.netloc.lower().split(":")[0]
+        path = parts.path.lower() or "/"
+        for site in sites:
+            site_host, _, site_path = site.lower().partition("/")
+            if (host == site_host or host.endswith("." + site_host)) and fnmatchcase(path, "/" + site_path):
+                found.append(link)
+                break
+    return found
 
 
 def careers_candidates(links: list[Link], careers_words: list[str]) -> list[Link]:

@@ -17,7 +17,8 @@ posting at the top, in a list or under `@graph`) are handled here once. Broken b
 skipped. `normalize_date` turns ISO, epoch-millisecond, .NET `/Date(ms)/` and RFC 822 dates
 into ISO 8601 and returns None rather than guess.
 
-Public surface: `collect_links`, `careers_candidates`, `careers_score`, `job_link_candidates`,
+Public surface: `collect_links`, `careers_candidates`, `unsupported_job_site_links` (links to a
+job list on a site scout does not read, by the patterns in `scout.toml`), `careers_score`, `job_link_candidates`,
 `job_link_heuristic` (only used when Jev is unavailable), `canonical_url`, `extract_text`,
 `page_title`, `details_from_page`, `find_job_posting`, `job_posting_fields`, `normalize_date`,
 `same_site`, and the `Link` value.

@@ -77,6 +77,14 @@ job_page_threshold = 0.5
 # Below this, Jev's careers-page choice is treated as "none".
 careers_choice_min_probability = 0.35
 max_job_links_per_page = 500
+# Job sites scout does not read: a careers page that lists no jobs itself but links to one of
+# these reports `jobs_on_unsupported_site` with the link, instead of `no_jobs_found`. A host
+# and a path pattern; the host matches its subdomains too, `*` matches anything in the path.
+unsupported_job_sites = [
+  "linkedin.com/company/*/jobs*",
+  "linkedin.com/jobs*",
+  "linkedin.com/showcase/*/jobs*",
+]
 # A cached route older than this is re-checked against the homepage on the next scrape.
 route_max_age_days = 30
 

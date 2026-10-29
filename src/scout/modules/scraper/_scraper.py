@@ -213,6 +213,7 @@ def _scrape_entry(result: ScrapeResult, fresh: bool, known: int, budget: Budget 
         "found_by": result.found_by.value if result.found_by else None,
         "board": asdict(result.board) if result.board else None,
         "careers_url": result.careers_url,
+        "job_list_url": result.job_list_url,
         "fresh": fresh,
         "known_job_ids": known,
         "budget": asdict(budget) if budget else None,

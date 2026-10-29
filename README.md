@@ -108,6 +108,7 @@ the ad's prose, so any of them may be null. `details_sources` says where each ca
 | `no_careers_page` | no careers page on the site |
 | `no_jobs_found` | a careers page, but no job ads recognised on it (it may simply have none) |
 | `job_list_unreadable` | the careers page links to a job list scout cannot read |
+| `jobs_on_unsupported_site` | the careers page lists no jobs but sends people to a job site scout does not read, such as LinkedIn; `job_list_url` is the link |
 | `budget_exceeded` | the request's budget ran out; jobs may be partial |
 | `error` | anything else; see `reason` |
 
