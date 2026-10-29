@@ -32,6 +32,10 @@ one, like Molslinjen's old Teamtailor board); it still counts if the site's own 
    fetched. A page with no job links is rendered once in the headless browser; if no real job
    ads remain, the link to the full job list is followed one hop (also off-site, e.g. a parent
    company's site).
+   If still no jobs, and the page links to a job site scout does not read
+   (`unsupported_job_sites` in `scout.toml`, LinkedIn's company job pages), the result is
+   `jobs_on_unsupported_site` with that link as `job_list_url`, and no board is guessed: the
+   company has said where its jobs are.
 6. **Last resort, guess the board** from slugs derived from the domain (`boards.guess`), only
    when the site shows no jobs, and only a board whose feed names this company (Lever and Ashby
    feeds name nobody, and `lunar` on Ashby is not lunar.app). Guessing costs dozens of requests

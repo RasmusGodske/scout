@@ -20,6 +20,7 @@ from scout.modules.pages._links import (
     job_link_heuristic,
     same_site,
     sitemap_entries,
+    unsupported_job_site_links,
 )
 from scout.modules.pages._text import extract_text, page_title
 
@@ -40,4 +41,5 @@ __all__ = [
     "page_title",
     "same_site",
     "sitemap_entries",
+    "unsupported_job_site_links",
 ]

@@ -25,6 +25,7 @@ from scout.modules.pages import (
     page_title,
     same_site,
     sitemap_entries,
+    unsupported_job_site_links,
 )
 from scout.modules.results import (
     BoardRef,
@@ -54,6 +55,9 @@ class DiscoveryConfig:
     job_page_threshold: float = 0.5
     careers_choice_min_probability: float = 0.35
     max_job_links_per_page: int = 150
+    # Job sites scout does not read (`linkedin.com/company/*/jobs*`): a careers page that sends
+    # people there without listing jobs itself gets `jobs_on_unsupported_site`.
+    unsupported_job_sites: list[str] = field(default_factory=list)
 
     @classmethod
     def from_config(cls, section: dict[str, Any]) -> DiscoveryConfig:
@@ -306,6 +310,8 @@ class Resolver:
             result = self._from_careers_page(domain, response, found_by, known)
             if result.jobs or result.status is Status.BOARD:
                 return result
+            if result.problem is Problem.JOBS_ON_UNSUPPORTED_SITE:
+                return result  # the site says where its jobs are: no board to guess
 
         # 6. Last resort: guess the board from the domain.
         guessed = self._guess(domain, distrust)
@@ -395,6 +401,7 @@ class Resolver:
         except BudgetExceeded as exc:
             jobs = tuple(jobs_found)
             problem, reason = Problem.BUDGET_EXCEEDED, f"{exc}; job pages not verified"
+        job_list_url = ""
         if not jobs and problem is None and hop == 0:
             # No real job ads here (none linked, or the ones linked were not open ads): a careers
             # landing page often links to the real list ("See open positions").
@@ -404,10 +411,24 @@ class Resolver:
                 if nested is None:
                     reason = f"job list at {listing_page} could not be read (blocked or gone)"
                     problem = Problem.JOB_LIST_UNREADABLE
+                    job_list_url = listing_page
                 else:
                     result = self._from_careers_page(domain, nested, found_by, known, hop=1)
                     if result.jobs or result.status is Status.BOARD:
                         return result
+                    if result.problem is Problem.JOBS_ON_UNSUPPORTED_SITE:
+                        return result
+        if not jobs and problem is None:
+            # "See all open positions" on LinkedIn: the right place, on a site scout does not read.
+            elsewhere = unsupported_job_site_links(links, self._config.unsupported_job_sites)
+            if elsewhere:
+                problem = Problem.JOBS_ON_UNSUPPORTED_SITE
+                job_list_url = elsewhere[0].url
+                text = f' ("{elsewhere[0].text}")' if elsewhere[0].text else ""
+                reason = (
+                    f"the careers page sends people to {job_list_url}{text}, a job site scout does not read"
+                )
+                note("unsupported_job_site", page=careers_url, url=job_list_url, text=elsewhere[0].text)
         if not jobs and problem is None:
             problem = Problem.NO_JOBS_FOUND
             reason = reason or f"no job ads recognised among {len(candidates)} links on the careers page"
@@ -419,6 +440,7 @@ class Resolver:
             found_by=found_by,
             reason=reason,
             problem=problem,
+            job_list_url=job_list_url,
             jobs=jobs,
             link_verdicts=new_verdicts,
             careers_rendered=response.rendered,

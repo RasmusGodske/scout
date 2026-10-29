@@ -13,6 +13,7 @@ from scout.modules.pages import (
     job_link_candidates,
     job_link_heuristic,
     page_title,
+    unsupported_job_site_links,
 )
 
 SUPPORT = Path(__file__).parent / "support"
@@ -103,3 +104,22 @@ def test_extract_text_gives_the_same_text_however_often_a_page_is_read() -> None
     page = read("lunar_teamtailor_job.html")
     texts = [extract_text(page) for _ in range(5)]
     assert len(set(texts)) == 1
+
+
+SITES = ["linkedin.com/company/*/jobs*", "linkedin.com/jobs*"]
+
+
+def test_links_to_unsupported_job_sites_are_found_and_social_links_are_not() -> None:
+    links = [
+        Link("https://www.linkedin.com/company/acme", ""),  # the company's profile, not its jobs
+        Link("https://www.linkedin.com/company/acme/jobs/", "See all open positions"),
+        Link("https://dk.linkedin.com/jobs/view/123", "Account Executive"),
+        Link("https://acme.dk/jobs", "Jobs"),
+        Link("https://notlinkedin.com/company/acme/jobs", "Jobs"),
+    ]
+    found = unsupported_job_site_links(links, SITES)
+    assert [link.url for link in found] == [
+        "https://www.linkedin.com/company/acme/jobs/",
+        "https://dk.linkedin.com/jobs/view/123",
+    ]
+    assert unsupported_job_site_links(links, []) == []

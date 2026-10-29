@@ -28,8 +28,9 @@ from support.sites import FakeWeb, jev_transport
 
 BOARDS_SUPPORT = Path(__file__).parents[1] / "boards" / "support"
 CONFIG = DiscoveryConfig(
-    careers_words=["career", "careers", "jobs", "job", "karriere", "ledige stillinger"],
+    careers_words=["career", "careers", "jobs", "job", "karriere", "ledige stillinger", "open positions"],
     common_paths=["/careers", "/karriere"],
+    unsupported_job_sites=["linkedin.com/company/*/jobs*"],
 )
 FILLER = "<a href=/n1>a</a><a href=/n2>b</a><a href=/n3>c</a><a href=/n4>d</a><a href=/n5>e</a>" + "x" * 600
 
@@ -190,6 +191,37 @@ def test_typed_problems(tmp_path: Path) -> None:
     assert res.resolve("empty.dk").problem is Problem.NO_CAREERS_PAGE
     nojobs = res.resolve("acme.dk")
     assert nojobs.status is Status.PAGE and nojobs.problem is Problem.NO_JOBS_FOUND
+
+
+def test_a_careers_page_that_sends_people_to_linkedin_says_so(tmp_path: Path) -> None:
+    # Like cyberpilot.io: the careers page's only way to the jobs is LinkedIn's company jobs page.
+    web = FakeWeb()
+    web.html("https://acme.dk/", f"<a href='/job-and-career'>Job and career</a>{FILLER}")
+    web.html(
+        "https://acme.dk/job-and-career",
+        "<a href='https://www.linkedin.com/company/acme'>in</a>"
+        f"<a href='https://www.linkedin.com/company/acme/jobs/' class=btn>See all open positions</a>{FILLER}",
+    )
+    seen: list = []
+    r = resolver(web, jev_judging(seen=seen), tmp_path).resolve("acme.dk")
+    assert r.status is Status.PAGE and r.problem is Problem.JOBS_ON_UNSUPPORTED_SITE
+    assert r.job_list_url == "https://www.linkedin.com/company/acme/jobs/"
+    assert "linkedin.com/company/acme/jobs" in r.reason and "See all open positions" in r.reason
+    assert r.careers_url == "https://acme.dk/job-and-career" and not r.jobs
+    assert not any("linkedin.com" in url for url in web.urls()), "scout never fetches LinkedIn"
+    assert not any("greenhouse" in url or "ashby" in url for url in web.urls()), "no board guessing"
+
+
+def test_a_page_with_its_own_jobs_and_a_linkedin_link_keeps_its_jobs(tmp_path: Path) -> None:
+    web = FakeWeb()
+    careers_site(web, {"sales-rep": "Sales rep"})
+    web.html(
+        "https://acme.dk/karriere",
+        "<a href='/karriere/sales-rep'>Sales rep</a>"
+        f"<a href='https://www.linkedin.com/company/acme/jobs/'>Also on LinkedIn</a>{FILLER}",
+    )
+    r = resolver(web, jev_judging({"/karriere/": 0.95}), tmp_path).resolve("acme.dk")
+    assert r.problem is None and len(r.jobs) == 1 and r.job_list_url == ""
 
 
 # --- known jobs -----------------------------------------------------------------------------
