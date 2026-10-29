@@ -147,6 +147,17 @@ class Fetcher:
             meter.http(len(html.encode("utf-8", errors="replace")))
         return Response(url, final_url, 200, html, "text/html", rendered=True)
 
+    def allowed(self, url: str) -> bool:
+        """Whether robots.txt lets scout fetch `url`. Answered from the per-origin cache after
+        the first request to that origin; a host that does not answer counts as allowed."""
+        try:
+            self._allow(url)
+        except Blocked:
+            return False
+        except FetchError:
+            return True
+        return True
+
     def close_thread(self) -> None:
         """Close the calling thread's headless browser, if it started one."""
         if self._browser is not None:

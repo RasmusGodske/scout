@@ -473,6 +473,20 @@ def test_the_job_list_is_followed_when_the_only_job_link_is_not_a_job(tmp_path: 
     assert r.board == BoardRef("teamtailor", "acme") and r.jobs
 
 
+def test_a_job_list_kept_out_by_robots_txt_says_so(tmp_path: Path) -> None:
+    # Like the Personio, HR-ON and e-pos job lists: robots.txt disallows every crawler.
+    web = FakeWeb()
+    web.html("https://acme.dk/", f"<a href='/karriere'>Karriere</a>{FILLER}")
+    web.html(
+        "https://acme.dk/karriere", f"<a href='https://acme.jobs.example.com/'>Ledige stillinger</a>{FILLER}"
+    )
+    web.text("https://acme.jobs.example.com/robots.txt", "User-agent: *\nDisallow: /\n")
+    r = resolver(web, tmp=tmp_path).resolve("acme.dk")
+    assert r.problem is Problem.JOB_LIST_UNREADABLE
+    assert r.job_list_url == "https://acme.jobs.example.com/"
+    assert "robots.txt disallows" in r.reason
+
+
 # --- step 2: cheaper discovery ----------------------------------------------------------------
 
 

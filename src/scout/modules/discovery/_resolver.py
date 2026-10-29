@@ -409,7 +409,12 @@ class Resolver:
             if listing_page is not None:
                 nested = self._try_page(listing_page)
                 if nested is None:
-                    reason = f"job list at {listing_page} could not be read (blocked or gone)"
+                    why = (
+                        "blocked or gone"
+                        if self._fetcher.allowed(listing_page)
+                        else "its robots.txt disallows scout"
+                    )
+                    reason = f"job list at {listing_page} could not be read ({why})"
                     problem = Problem.JOB_LIST_UNREADABLE
                     job_list_url = listing_page
                 else:

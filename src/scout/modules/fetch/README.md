@@ -21,7 +21,8 @@ it had unreadable job pages (`_tls.py`).
 Every request and render is reported to the current request's meter (`metering`) and
 reserved against its budget before it is sent; robots.txt fetches and retries count too.
 
-Public surface: `Fetcher`, `FetchPolicy`, `Response`, `FetchError`, `Blocked` (robots said no),
+Public surface: `Fetcher` (with `allowed(url)`: whether robots.txt lets scout in, from the
+per-origin cache), `FetchPolicy`, `Response`, `FetchError`, `Blocked` (robots said no),
 `Unreachable` (the host did not answer).
 
 Known limits: redirects are followed by httpx, so `robots.txt` is checked for the first URL

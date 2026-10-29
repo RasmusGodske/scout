@@ -32,7 +32,8 @@ one, like Molslinjen's old Teamtailor board); it still counts if the site's own 
    one), else Jev answers one yes/no per link ("a single job ad?"), batched, and each yes is
    fetched. A page with no job links is rendered once in the headless browser; if no real job
    ads remain, the link to the full job list is followed one hop (also off-site, e.g. a parent
-   company's site).
+   company's site). A job list that cannot be read is `job_list_unreadable`, and the reason says
+   when robots.txt is why (Personio, HR-ON and e-pos job pages disallow every crawler).
    If still no jobs, and the page links to a job site scout does not read
    (`unsupported_job_sites` in `scout.toml`, LinkedIn's company job pages), the result is
    `jobs_on_unsupported_site` with that link as `job_list_url`, and no board is guessed: the
