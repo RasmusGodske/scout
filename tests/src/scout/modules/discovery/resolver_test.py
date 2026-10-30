@@ -178,6 +178,22 @@ def test_common_path_when_the_homepage_has_no_link(tmp_path: Path) -> None:
     assert r.found_by is FoundBy.COMMON_PATH and [j.details.title for j in r.jobs] == ["Kok"]
 
 
+def test_a_common_path_that_redirects_away_from_careers_is_not_a_careers_page(tmp_path: Path) -> None:
+    # Production: /careers redirected to /contact, /about-us, /login or a domain seller's page
+    # and was taken as the careers page. A redirect that keeps a careers word still counts.
+    web = FakeWeb()
+    web.html("https://acme.dk/", f"<p>{FILLER}</p>")
+    web.redirect("https://acme.dk/careers", "https://acme.dk/contact/")
+    web.html("https://acme.dk/contact/", f"<h1>Contact us</h1>{FILLER}")
+    r = resolver(web, tmp=tmp_path).resolve("acme.dk")
+    assert r.status is Status.NO_CAREERS_PAGE
+    web.redirect("https://acme.dk/karriere", "https://parent.com/en/careers/")
+    web.html("https://parent.com/en/careers/", f"<a href='/en/careers/kok'>Kok</a>{FILLER}")
+    web.html("https://parent.com/en/careers/kok", f"<h1>Kok</h1><p>{'Mad. ' * 100}</p>")
+    r = resolver(web, tmp=tmp_path).resolve("acme.dk")
+    assert r.careers_url == "https://parent.com/en/careers/" and r.jobs
+
+
 def test_typed_problems(tmp_path: Path) -> None:
     web = FakeWeb()
     web.text("https://robots.dk/robots.txt", "User-agent: *\nDisallow: /")
