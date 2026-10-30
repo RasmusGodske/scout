@@ -15,6 +15,7 @@ from lxml import html as lxml_html
 from scout.modules import metering
 from scout.modules.fetch._browser import Browser
 from scout.modules.fetch._throttle import HostThrottle
+from scout.modules.fetch._tls import ChainCompleter, missing_issuer, ssl_context
 
 log = logging.getLogger(__name__)
 
@@ -85,12 +86,16 @@ class Fetcher:
 
     def __init__(self, policy: FetchPolicy, transport: httpx.BaseTransport | None = None) -> None:
         self._policy = policy
+        context = ssl_context()
         self._client = httpx.Client(
             headers={"User-Agent": policy.user_agent, "Accept-Language": "da,en;q=0.8"},
             timeout=policy.timeout_seconds,
             follow_redirects=True,
             transport=transport,
+            verify=context,
         )
+        # Servers that leave an intermediate out of their chain get it fetched, as browsers do.
+        self._chains = ChainCompleter(context, self._issuer_certificate)
         self._throttle = HostThrottle(policy.min_interval_seconds, per_host=policy.host_intervals)
         self._robots: dict[str, RobotFileParser | None] = {}
         self._robots_lock = threading.Lock()
@@ -142,6 +147,17 @@ class Fetcher:
             meter.http(len(html.encode("utf-8", errors="replace")))
         return Response(url, final_url, 200, html, "text/html", rendered=True)
 
+    def allowed(self, url: str) -> bool:
+        """Whether robots.txt lets scout fetch `url`. Answered from the per-origin cache after
+        the first request to that origin; a host that does not answer counts as allowed."""
+        try:
+            self._allow(url)
+        except Blocked:
+            return False
+        except FetchError:
+            return True
+        return True
+
     def close_thread(self) -> None:
         """Close the calling thread's headless browser, if it started one."""
         if self._browser is not None:
@@ -191,6 +207,33 @@ class Fetcher:
         return response
 
     def _send_unmetered(self, method: str, url: str, **kwargs: Any) -> Response:
+        try:
+            return self._stream(method, url, **kwargs)
+        except httpx.ConnectError as exc:
+            # A chain missing its intermediate: fetch it (once per host) and try again at once.
+            if missing_issuer(exc) and self._chains.complete(
+                str(exc.request.url) if _has_request(exc) else url
+            ):
+                return self._stream(method, url, **kwargs)
+            raise
+
+    def _issuer_certificate(self, url: str) -> bytes | None:
+        """An intermediate certificate from the URL a server's certificate names (AIA). Not a
+        crawl: robots.txt does not apply, but the request is throttled and metered like any."""
+        try:
+            self._throttle.wait(_host(url))
+            meter = metering.current()
+            if meter is not None:
+                meter.before_http()
+            r = self._client.get(url, headers={"Accept": "application/pkix-cert"})
+            if meter is not None:
+                meter.http(len(r.content))
+        except httpx.HTTPError as exc:
+            log.info("issuer certificate %s: %s", url, exc)
+            return None
+        return r.content if r.status_code == 200 and len(r.content) < 20_000 else None
+
+    def _stream(self, method: str, url: str, **kwargs: Any) -> Response:
         with self._client.stream(method, url, **kwargs) as r:
             body = bytearray()
             for chunk in r.iter_bytes():
@@ -272,6 +315,14 @@ def _retry_after(value: str) -> float | None:
         return max(0.0, float(value)) if value else None
     except ValueError:
         return None
+
+
+def _has_request(exc: httpx.HTTPError) -> bool:
+    try:
+        exc.request  # noqa: B018 - raises when the error carries no request
+    except RuntimeError:
+        return False
+    return True
 
 
 def _host(url: str) -> str:

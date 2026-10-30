@@ -69,6 +69,9 @@ common_paths = [
   "/careers", "/jobs", "/karriere", "/job", "/join-us", "/ledige-stillinger",
   "/da/karriere", "/da/job", "/da/jobs", "/da/ledige-stillinger",
   "/en/careers", "/en/jobs", "/en/join-us",
+  # Swedish and Norwegian sites, and careers under "about us" (found on 6 of 57 sites that had
+  # no careers page by the paths above, 2026-10-29).
+  "/karriar", "/sv/karriar", "/jobb", "/about-us/careers",
 ]
 # Probability above which Jev's "is this a link to a single job ad" counts as yes.
 job_link_threshold = 0.6

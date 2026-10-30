@@ -25,13 +25,16 @@ one, like Molslinjen's old Teamtailor board); it still counts if the site's own 
    keyword match is taken.
 3. **Sitemap**: `/sitemap.xml` (and up to three child sitemaps) for URLs with a careers word,
    Jev choosing among several. One request instead of a dozen path guesses.
-4. **Common paths** (`/careers`, `/karriere`, ...). A path that answers with the homepage itself
-   (same title, near-same size) is not a careers page.
+4. **Common paths** (`/careers`, `/karriere`, `/karriar`, `/jobb`, `/about-us/careers`, ...). A
+   path that answers with the homepage itself (same title, near-same size) is not a careers page,
+   nor is one that redirects to a URL without a careers word (`/careers` -> `/contact`, `/about-us`,
+   `/login`, a domain seller's page); `/jobs` -> `/en/careers` still counts.
 5. **The careers page**: a hiring-system board behind it (a redirect, an embed, or links to
    one), else Jev answers one yes/no per link ("a single job ad?"), batched, and each yes is
    fetched. A page with no job links is rendered once in the headless browser; if no real job
    ads remain, the link to the full job list is followed one hop (also off-site, e.g. a parent
-   company's site).
+   company's site). A job list that cannot be read is `job_list_unreadable`, and the reason says
+   when robots.txt is why (Personio, HR-ON and e-pos job pages disallow every crawler).
    If still no jobs, and the page links to a job site scout does not read
    (`unsupported_job_sites` in `scout.toml`, LinkedIn's company job pages), the result is
    `jobs_on_unsupported_site` with that link as `job_list_url`, and no board is guessed: the

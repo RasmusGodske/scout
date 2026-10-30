@@ -409,7 +409,12 @@ class Resolver:
             if listing_page is not None:
                 nested = self._try_page(listing_page)
                 if nested is None:
-                    reason = f"job list at {listing_page} could not be read (blocked or gone)"
+                    why = (
+                        "blocked or gone"
+                        if self._fetcher.allowed(listing_page)
+                        else "its robots.txt disallows scout"
+                    )
+                    reason = f"job list at {listing_page} could not be read ({why})"
                     problem = Problem.JOB_LIST_UNREADABLE
                     job_list_url = listing_page
                 else:
@@ -567,17 +572,27 @@ class Resolver:
         tried = []
         for path in self._config.common_paths:
             response = self._try_page(base + path)
-            # Some sites answer any path with the homepage instead of a 404.
+            # Some sites answer any path with the homepage instead of a 404, and some redirect
+            # an unknown path elsewhere (/contact, /about-us, /login, a parked-domain seller).
             if (
                 response is not None
                 and _key(response.final_url) != home_key
                 and not _same_content(response, homepage)
+                and self._still_careers(base + path, response.final_url)
             ):
                 note("common_paths", tried=tried, found=path)
                 return response
             tried.append(path)
         note("common_paths", tried=tried, found=None)
         return None
+
+    def _still_careers(self, asked: str, landed: str) -> bool:
+        """Whether a guessed path that redirected still landed on a careers page: its URL keeps
+        a careers word (/jobs -> /en/careers, a parent's /karriere). One that lost it went to
+        whatever the site shows for unknown paths."""
+        if _key(asked).lower() == _key(landed).lower():
+            return True
+        return careers_score(Link(landed, ""), self._config.careers_words) > 0
 
     def _job(self, link: Link, known: Known) -> Job | None:
         job_id = canonical_url(link.url)

@@ -52,6 +52,19 @@ def test_careers_word_must_be_a_word() -> None:
     assert careers_candidates([Link("https://acme.dk/x", "Ledige stillinger")], WORDS)
 
 
+def test_careers_words_match_url_slugs_written_without_accents() -> None:
+    words = ["karriär", "työpaikat", "carrières"]
+    for url in (
+        "https://acme.se/karriar/",
+        "https://acme.fi/tyopaikat",
+        "https://acme.fr/carrieres",
+        "https://acme.se/karri%C3%A4r",
+    ):
+        assert careers_candidates([Link(url, "")], words), url
+    # Only accents are dropped: a different word stays different.
+    assert careers_candidates([Link("https://acme.se/karta", "")], words) == []
+
+
 def test_real_homepage_points_at_the_emply_site() -> None:
     links = collect_links(read("molslinjen_homepage.html"), "https://www.molslinjen.dk/")
     urls = [l.url for l in careers_candidates(links, WORDS)]
@@ -67,6 +80,29 @@ def test_job_link_candidates_on_a_real_careers_page() -> None:
     assert len(positions) >= 5
     assert all(not l.url.rstrip("/").endswith("open-positions") for l in candidates)
     assert all("linkedin" not in l.url for l in candidates)
+
+
+def test_job_ads_on_hiring_systems_with_their_own_url_shapes_are_candidates() -> None:
+    # Shapes seen on production misses (company names replaced): Talentadore's /apply/<slug>/<id>,
+    # Reqruiting's job.aspx?id=<n>, a Swedish recruiter's /tjanst/<id>-<slug>. Before, off-site
+    # links in these shapes were dropped before Jev ever saw them.
+    page = "https://acme.com/open-positions/"
+    html = """<main>
+      <a href="https://ats.talentadore.com/apply/ai-engineer/DokV4P">AI Engineer</a>
+      <a href="https://AcmeAS.reqruiting.com/job.aspx?id=28792">Apply for Consultant</a>
+      <a href="https://www.recruiter.se/tjanst/3472-produktionschef-till-acme">via länken</a>
+      <a href="https://partner.example.com/products/widget">Our partner</a>
+      <a href="https://AcmeAS.reqruiting.com/Pages/Application/Login.aspx?customerId=3672">Log in</a>
+    </main>"""
+    urls = [l.url for l in job_link_candidates(collect_links(html, page), page, 500)]
+    assert urls == [
+        "https://ats.talentadore.com/apply/ai-engineer/DokV4P",
+        "https://AcmeAS.reqruiting.com/job.aspx?id=28792",
+        "https://www.recruiter.se/tjanst/3472-produktionschef-till-acme",
+    ]
+    assert all(job_link_heuristic(Link(u, ""), page) >= 0.6 for u in urls)
+    # The Swedish plural "tjänster" means services, not positions.
+    assert job_link_heuristic(Link("https://acme.se/tjanster/it-support/", "IT-support"), page) < 0.6
 
 
 def test_job_link_heuristic_tells_ads_from_navigation() -> None:

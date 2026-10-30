@@ -25,6 +25,14 @@ def test_robots_disallow_is_honoured() -> None:
         f.get("https://acme.dk/private/x")
 
 
+def test_allowed_answers_from_robots_txt() -> None:
+    web = FakeWeb()
+    web.text("https://acme.dk/robots.txt", "User-agent: *\nDisallow: /private\n")
+    f = fetcher(web)
+    assert f.allowed("https://acme.dk/jobs") and not f.allowed("https://acme.dk/private/x")
+    assert web.urls() == ["https://acme.dk/robots.txt"]  # one request, then the cache
+
+
 def test_missing_robots_allows_and_5xx_robots_disallows() -> None:
     web = FakeWeb()
     web.html("https://a.dk/", "<p>a</p>")
